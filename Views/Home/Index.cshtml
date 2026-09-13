@@ -1,0 +1,236 @@
+@model ReadMeApp.Models.ViewModels.DashboardViewModel
+@{
+    ViewData["Title"] = "대시보드";
+}
+
+<!-- Hero / Welcome Banner -->
+<div class="p-4 p-md-5 mb-4 rounded-3 text-white bg-dark shadow-sm position-relative overflow-hidden">
+    <div class="col-md-8 position-relative" style="z-index: 2;">
+        <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="badge bg-primary text-uppercase px-2 py-1"><i class="bi bi-terminal-fill"></i> Read.me</span>
+            <span class="badge bg-secondary">ASP.NET Core MVC &amp; Azure</span>
+        </div>
+        <h1 class="display-5 fw-bold mb-3">개발자를 위한 스마트 독서록</h1>
+        <p class="lead text-light mb-4">
+            책 속의 영감을 마크다운으로 기록하고, 독서 진행률을 추적하며, 
+            내 독서 히스토리를 <strong>GitHub Profile README</strong>로 한 번에 내보내세요.
+        </p>
+        <div class="d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-primary btn-lg px-4" data-bs-toggle="modal" data-bs-target="#searchModal">
+                <i class="bi bi-search"></i> 새 도서 검색 &amp; 추가
+            </button>
+            <a asp-controller="Books" asp-action="Index" class="btn btn-outline-light btn-lg px-4">
+                <i class="bi bi-collection"></i> 내 서재 바로가기
+            </a>
+            <button type="button" class="btn btn-success btn-lg px-4" id="btnExportReadmeHero">
+                <i class="bi bi-markdown-fill"></i> README 내보내기
+            </button>
+        </div>
+    </div>
+    <div class="position-absolute end-0 bottom-0 opacity-25 p-4 d-none d-lg-block">
+        <i class="bi bi-journal-code" style="font-size: 16rem; line-height: 1;"></i>
+    </div>
+</div>
+
+<!-- Key Metrics Section -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="card h-100 border-0 shadow-sm border-start border-primary border-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small fw-semibold">읽는 중인 도서</div>
+                        <h2 class="fw-bold mb-0 text-primary">@Model.ReadingCount<span class="fs-6 text-muted ms-1">권</span></h2>
+                    </div>
+                    <div class="bg-primary bg-opacity-10 text-primary p-3 rounded-circle">
+                        <i class="bi bi-book fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card h-100 border-0 shadow-sm border-start border-success border-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small fw-semibold">완독한 도서</div>
+                        <h2 class="fw-bold mb-0 text-success">@Model.CompletedCount<span class="fs-6 text-muted ms-1">권</span></h2>
+                    </div>
+                    <div class="bg-success bg-opacity-10 text-success p-3 rounded-circle">
+                        <i class="bi bi-check-circle-fill fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card h-100 border-0 shadow-sm border-start border-warning border-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small fw-semibold">읽고 싶은 책</div>
+                        <h2 class="fw-bold mb-0 text-warning">@Model.WishlistCount<span class="fs-6 text-muted ms-1">권</span></h2>
+                    </div>
+                    <div class="bg-warning bg-opacity-10 text-warning p-3 rounded-circle">
+                        <i class="bi bi-bookmark-star-fill fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card h-100 border-0 shadow-sm border-start border-info border-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small fw-semibold">기록한 필사 &amp; 메모</div>
+                        <h2 class="fw-bold mb-0 text-info">@Model.TotalNotesCount<span class="fs-6 text-muted ms-1">개</span></h2>
+                    </div>
+                    <div class="bg-info bg-opacity-10 text-info p-3 rounded-circle">
+                        <i class="bi bi-pencil-square fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Yearly Goal Progress Bar -->
+<div class="card border-0 shadow-sm mb-5">
+    <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="fw-bold"><i class="bi bi-flag-fill text-danger me-1"></i> 올해 독서 목표 달성률</span>
+            <span class="fw-bold text-muted small">@Model.CompletedCount / @Model.YearlyGoal 권 (@Model.GoalProgressPercentage%)</span>
+        </div>
+        <div class="progress" style="height: 12px;">
+            <div class="progress-bar bg-gradient bg-primary" role="progressbar" 
+                 style="width: @Model.GoalProgressPercentage%;" 
+                 aria-valuenow="@Model.GoalProgressPercentage" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left Column: Currently Reading -->
+    <div class="col-lg-7">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="fw-bold mb-0"><i class="bi bi-hourglass-split text-primary"></i> 지금 읽고 있는 책</h4>
+            <a asp-controller="Books" asp-action="Index" asp-route-status="Reading" class="text-decoration-none small text-muted">
+                전체보기 <i class="bi bi-chevron-right"></i>
+            </a>
+        </div>
+
+        @if (Model.CurrentlyReading.Count == 0)
+        {
+            <div class="card border-0 shadow-sm text-center py-5">
+                <div class="card-body">
+                    <i class="bi bi-book text-muted" style="font-size: 3rem;"></i>
+                    <p class="text-muted mt-2">현재 읽고 있는 책이 없습니다.</p>
+                    <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#searchModal">
+                        책 추가하기
+                    </button>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="d-flex flex-col gap-3">
+                @foreach (var item in Model.CurrentlyReading)
+                {
+                    <div class="card border-0 shadow-sm p-3 mb-3 hover-shadow transition" id="card-userbook-@item.Id">
+                        <div class="row g-3 align-items-center">
+                            <div class="col-3 col-sm-2 text-center">
+                                @if (!string.IsNullOrWhiteSpace(item.Book?.CoverImageUrl))
+                                {
+                                    <img src="@item.Book.CoverImageUrl" alt="@item.Book.Title" class="img-fluid rounded shadow-sm" style="max-height: 110px; object-fit: cover;" />
+                                }
+                                else
+                                {
+                                    <div class="bg-secondary text-white rounded d-flex align-items-center justify-content-center" style="height: 100px;">
+                                        <i class="bi bi-book fs-2"></i>
+                                    </div>
+                                }
+                            </div>
+                            <div class="col-9 col-sm-10">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <h5 class="fw-bold mb-1">
+                                        <a asp-controller="Books" asp-action="Details" asp-route-id="@item.Id" class="text-decoration-none text-dark">
+                                            @item.Book?.Title
+                                        </a>
+                                    </h5>
+                                    <span class="badge bg-primary">읽는 중</span>
+                                </div>
+                                <p class="text-muted small mb-2">@item.Book?.Author | @item.Book?.Publisher</p>
+
+                                <div class="d-flex justify-content-between align-items-center small text-muted mb-1">
+                                    <span>진행률: <strong class="text-primary" id="pct-text-@item.Id">@item.ProgressPercentage%</strong></span>
+                                    <span><span id="curr-page-text-@item.Id">@item.CurrentPage</span> / @item.Book?.TotalPages p</span>
+                                </div>
+                                <div class="progress mb-2" style="height: 8px;">
+                                    <div class="progress-bar bg-primary" id="progress-bar-@item.Id" role="progressbar" style="width: @item.ProgressPercentage%;"></div>
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-center mt-2">
+                                    <div class="input-group input-group-sm" style="max-width: 220px;">
+                                        <span class="input-group-text bg-light">페이지</span>
+                                        <input type="number" class="form-control" id="input-quick-page-@item.Id" value="@item.CurrentPage" min="0" max="@item.Book?.TotalPages" />
+                                        <button class="btn btn-outline-primary btn-quick-save" data-id="@item.Id" type="button">저장</button>
+                                    </div>
+                                    <a asp-controller="Books" asp-action="Details" asp-route-id="@item.Id" class="btn btn-link btn-sm text-decoration-none">
+                                        메모 작성 <i class="bi bi-pencil"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <!-- Right Column: Recent Notes & Thoughts -->
+    <div class="col-lg-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="fw-bold mb-0"><i class="bi bi-chat-square-quote text-info"></i> 최근 필사 &amp; 메모</h4>
+        </div>
+
+        @if (Model.RecentNotes.Count == 0)
+        {
+            <div class="card border-0 shadow-sm text-center py-5">
+                <div class="card-body">
+                    <i class="bi bi-chat-quote text-muted" style="font-size: 3rem;"></i>
+                    <p class="text-muted mt-2">아직 작성된 메모가 없습니다.<br />책을 읽으며 기억하고 싶은 문장을 기록해 보세요.</p>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="d-flex flex-column gap-3">
+                @foreach (var note in Model.RecentNotes)
+                {
+                    <div class="card border-0 shadow-sm p-3 border-start border-info border-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fw-bold small text-dark">
+                                <i class="bi bi-book"></i> @note.UserBook?.Book?.Title
+                            </span>
+                            <span class="badge bg-light text-muted border">p.@note.PageNumber</span>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(note.Quote))
+                        {
+                            <blockquote class="blockquote fs-6 text-muted fst-italic my-2 ps-2 border-start border-2">
+                                "@note.Quote"
+                            </blockquote>
+                        }
+                        <div class="markdown-preview small text-secondary mt-1">
+                            @Html.Raw(note.ThoughtHtml)
+                        </div>
+                        <div class="text-muted text-end small mt-1" style="font-size: 0.75rem;">
+                            @note.CreatedAt.ToString("yyyy-MM-dd HH:mm")
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>

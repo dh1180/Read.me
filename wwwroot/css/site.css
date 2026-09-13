@@ -1,0 +1,83 @@
+html {
+  font-size: 14px;
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+body {
+  background-color: #f8fafc;
+  color: #1e293b;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.transition {
+  transition: all 0.2s ease-in-out;
+}
+
+.hover-shadow:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08) !important;
+}
+
+.card {
+  border-radius: 0.75rem;
+}
+
+.btn {
+  border-radius: 0.5rem;
+  font-weight: 500;
+}
+
+.progress {
+  border-radius: 9999px;
+  background-color: #e2e8f0;
+}
+
+.progress-bar {
+  border-radius: 9999px;
+  transition: width 0.4s ease;
+}
+
+/* Markdown styling inside notes */
+.markdown-body, .markdown-preview {
+  line-height: 1.6;
+}
+
+.markdown-body blockquote, .markdown-preview blockquote {
+  border-left: 3px solid #3b82f6;
+  padding-left: 0.75rem;
+  color: #64748b;
+  font-style: italic;
+  margin: 0.5rem 0;
+}
+
+.markdown-body pre, .markdown-preview pre {
+  background-color: #f1f5f9;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  overflow-x: auto;
+}
+
+.markdown-body code, .markdown-preview code {
+  background-color: #f1f5f9;
+  color: #e11d48;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+}
+
+/* Custom range slider thumb */
+.form-range::-webkit-slider-thumb {
+  background-color: #0d6efd;
+}
+
+.footer {
+  margin-top: auto;
+}

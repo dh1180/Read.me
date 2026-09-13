@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Read.me</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top border-bottom border-secondary shadow-sm">
+            <div class="container">
+                <a class="navbar-brand fw-bold d-flex items-center gap-2" asp-controller="Home" asp-action="Index">
+                    <span class="badge bg-primary text-white px-2 py-1"><i class="bi bi-book-half"></i> Read.me</span>
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain" aria-controls="navbarMain"
+                        aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarMain">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <li class="nav-item">
+                            <a class="nav-link text-white-50" asp-controller="Home" asp-action="Index">
+                                <i class="bi bi-speedometer2"></i> 대시보드
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white-50" asp-controller="Books" asp-action="Index">
+                                <i class="bi bi-collection"></i> 내 서재
+                            </a>
+                        </li>
+                    </ul>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#searchModal">
+                            <i class="bi bi-search"></i> 도서 검색
+                        </button>
+                        <button type="button" class="btn btn-primary btn-sm" id="btnExportReadmeHeader">
+                            <i class="bi bi-markdown"></i> Export to README
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="container py-4">
+        <main role="main">
+            @RenderBody()
+        </main>
+    </div>
+
+    <!-- Global Book Search Modal (jQuery Ajax) -->
+    <div class="modal fade" id="searchModal" tabindex="-1" aria-labelledby="searchModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-bold" id="searchModalLabel">
+                        <i class="bi bi-search text-primary"></i> 도서 검색 및 내 서재에 추가
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="input-group mb-3">
+                        <input type="text" id="inputBookSearch" class="form-control form-control-lg" placeholder="책 제목, 저자, 또는 출판사를 입력하세요 (예: 클린 코드, 리팩터링)" />
+                        <button class="btn btn-primary px-4" id="btnExecuteSearch" type="button">
+                            <i class="bi bi-search"></i> 검색
+                        </button>
+                    </div>
+                    <div id="searchLoading" class="text-center py-4 d-none">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">검색 중...</span>
+                        </div>
+                        <p class="text-muted mt-2 small">도서를 검색하는 중입니다...</p>
+                    </div>
+                    <div id="searchResultsList" class="row g-3">
+                        <div class="col-12 text-center text-muted py-4">
+                            <i class="bi bi-lightbulb fs-2"></i>
+                            <p class="mt-2">검색어를 입력하고 검색 버튼을 누르면 추천 도서 목록이 표시됩니다.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <span class="text-muted small me-auto"><i class="bi bi-info-circle"></i> 원하는 도서의 [서재에 담기]를 누르면 비동기(Ajax)로 즉시 등록됩니다.</span>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">닫기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export README Modal -->
+    <div class="modal fade" id="exportReadmeModal" tabindex="-1" aria-labelledby="exportReadmeModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title fw-bold" id="exportReadmeModalLabel">
+                        <i class="bi bi-github"></i> GitHub Profile용 README.md 내보내기
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">
+                        내 서재의 현재 독서 진행률, 완독 목록, 인상 깊은 구절이 담긴 마크다운 카드입니다.
+                        복사하여 본인의 <strong>GitHub 프로필 README</strong>나 블로그에 붙여넣으세요!
+                    </p>
+                    <div class="position-relative">
+                        <textarea id="txtReadmeContent" class="form-control font-monospace small bg-light" rows="14" readonly></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" id="btnCopyReadmeMarkdown">
+                        <i class="bi bi-clipboard-check"></i> 마크다운 클립보드 복사
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
+        <div id="appToast" class="toast align-items-center text-white bg-primary border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body" id="appToastBody">
+                    작업이 완료되었습니다.
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer mt-auto py-3 bg-light border-top text-muted small">
+        <div class="container d-flex flex-wrap justify-content-between align-items-center">
+            <span>&copy; 2026 <strong>Read.me</strong> — A Modern Reading Journal built with ASP.NET Core &amp; Azure</span>
+            <span>Powered by <a href="https://github.com/dh1180/Read.md" target="_blank" class="text-decoration-none"><i class="bi bi-github"></i> GitHub</a></span>
+        </div>
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
