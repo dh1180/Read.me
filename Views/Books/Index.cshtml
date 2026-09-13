@@ -7,34 +7,34 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <div>
-        <h2 class="fw-bold mb-1"><i class="bi bi-collection-fill text-primary"></i> 내 서재 (My Library)</h2>
+        <h3 class="fw-bold mb-1 text-dark"><i class="bi bi-collection-fill text-primary me-1"></i> 내 서재</h3>
         <p class="text-muted small mb-0">등록된 총 <strong>@Model.Count</strong>권의 도서를 관리합니다.</p>
     </div>
-    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#searchModal">
-        <i class="bi bi-plus-lg"></i> 새 책 추가
+    <button type="button" class="btn btn-primary-gradient px-3 py-2" data-bs-toggle="modal" data-bs-target="#searchModal">
+        <i class="bi bi-plus-lg me-1"></i> 새 책 추가
     </button>
 </div>
 
 <!-- Status Filter Tabs -->
-<ul class="nav nav-pills mb-4 bg-light p-2 rounded-3">
+<ul class="nav nav-pills mb-4 bg-white p-2 rounded-4 shadow-sm border border-light">
     <li class="nav-item">
-        <a class="nav-link @(currentStatus == null ? "active" : "")" asp-action="Index">
+        <a class="nav-link rounded-pill px-3 py-2 @(currentStatus == null ? "active bg-primary" : "text-secondary")" asp-action="Index">
             전체 (@Model.Count)
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link @(currentStatus == ReadingStatus.Reading ? "active" : "")" asp-action="Index" asp-route-status="Reading">
-            <i class="bi bi-book-half text-primary"></i> 읽는 중
+        <a class="nav-link rounded-pill px-3 py-2 @(currentStatus == ReadingStatus.Reading ? "active bg-primary" : "text-secondary")" asp-action="Index" asp-route-status="Reading">
+            <i class="bi bi-book-half me-1"></i> 읽는 중
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link @(currentStatus == ReadingStatus.Completed ? "active" : "")" asp-action="Index" asp-route-status="Completed">
-            <i class="bi bi-check-circle-fill text-success"></i> 완독
+        <a class="nav-link rounded-pill px-3 py-2 @(currentStatus == ReadingStatus.Completed ? "active bg-success" : "text-secondary")" asp-action="Index" asp-route-status="Completed">
+            <i class="bi bi-check-circle-fill me-1"></i> 완독
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link @(currentStatus == ReadingStatus.Wishlist ? "active" : "")" asp-action="Index" asp-route-status="Wishlist">
-            <i class="bi bi-bookmark-fill text-warning"></i> 읽고 싶은 책
+        <a class="nav-link rounded-pill px-3 py-2 @(currentStatus == ReadingStatus.Wishlist ? "active bg-warning text-dark" : "text-secondary")" asp-action="Index" asp-route-status="Wishlist">
+            <i class="bi bi-bookmark-fill me-1"></i> 읽고 싶은 책
         </a>
     </li>
 </ul>
@@ -43,11 +43,11 @@
 {
     <div class="card border-0 shadow-sm text-center py-5">
         <div class="card-body">
-            <i class="bi bi-inbox text-muted" style="font-size: 3.5rem;"></i>
-            <h5 class="fw-bold mt-3 text-muted">서재에 도서가 없습니다.</h5>
-            <p class="text-muted small">새로운 책을 검색하여 내 서재에 담아보세요!</p>
-            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#searchModal">
-                <i class="bi bi-search"></i> 도서 검색하기
+            <i class="bi bi-inbox text-muted opacity-50" style="font-size: 3.5rem;"></i>
+            <h5 class="fw-bold mt-3 text-secondary">서재에 도서가 없습니다</h5>
+            <p class="text-muted small mb-3">새로운 책을 검색하여 내 서재에 담아보세요!</p>
+            <button type="button" class="btn btn-primary-gradient btn-sm px-4" data-bs-toggle="modal" data-bs-target="#searchModal">
+                <i class="bi bi-search me-1"></i> 도서 검색하기
             </button>
         </div>
     </div>
@@ -58,17 +58,17 @@ else
         @foreach (var item in Model)
         {
             <div class="col" id="book-card-col-@item.Id">
-                <div class="card h-100 border-0 shadow-sm position-relative overflow-hidden hover-shadow transition">
-                    <div class="card-body d-flex flex-column">
+                <div class="card h-100 border-0 shadow-sm hover-shadow transition">
+                    <div class="card-body d-flex flex-column p-4">
                         <div class="d-flex gap-3 mb-3">
                             <div class="flex-shrink-0 text-center" style="width: 85px;">
                                 @if (!string.IsNullOrWhiteSpace(item.Book?.CoverImageUrl))
                                 {
-                                    <img src="@item.Book.CoverImageUrl" alt="@item.Book.Title" class="img-fluid rounded shadow-sm" style="max-height: 120px; object-fit: cover;" />
+                                    <img src="@item.Book.CoverImageUrl" alt="@item.Book.Title" class="shelf-book-cover img-fluid" style="max-height: 120px; object-fit: cover;" />
                                 }
                                 else
                                 {
-                                    <div class="bg-secondary text-white rounded d-flex align-items-center justify-content-center" style="height: 120px;">
+                                    <div class="bg-light text-secondary rounded d-flex align-items-center justify-content-center" style="height: 120px;">
                                         <i class="bi bi-book fs-3"></i>
                                     </div>
                                 }
@@ -78,26 +78,26 @@ else
                                     @switch (item.Status)
                                     {
                                         case ReadingStatus.Reading:
-                                            <span class="badge bg-primary">읽는 중</span>
+                                            <span class="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle small px-2">읽는 중</span>
                                             break;
                                         case ReadingStatus.Completed:
-                                            <span class="badge bg-success">완독</span>
+                                            <span class="badge rounded-pill bg-success-subtle text-success border border-success-subtle small px-2">완독</span>
                                             break;
                                         case ReadingStatus.Wishlist:
-                                            <span class="badge bg-warning text-dark">읽고 싶은 책</span>
+                                            <span class="badge rounded-pill bg-warning-subtle text-warning border border-warning-subtle small px-2">읽고 싶은 책</span>
                                             break;
                                         default:
-                                            <span class="badge bg-secondary">중단</span>
+                                            <span class="badge rounded-pill bg-secondary small px-2">중단</span>
                                             break;
                                     }
                                 </div>
-                                <h5 class="fw-bold text-truncate mb-1" title="@item.Book?.Title">
+                                <h6 class="fw-bold text-truncate mb-1 text-dark" title="@item.Book?.Title">
                                     <a asp-action="Details" asp-route-id="@item.Id" class="text-decoration-none text-dark">
                                         @item.Book?.Title
                                     </a>
-                                </h5>
+                                </h6>
                                 <p class="text-muted small text-truncate mb-1">@item.Book?.Author</p>
-                                <p class="text-muted small mb-0">@item.Book?.Publisher | @item.Book?.TotalPages p</p>
+                                <p class="text-secondary small mb-0" style="font-size: 0.8rem;">@item.Book?.Publisher | @item.Book?.TotalPages p</p>
                             </div>
                         </div>
 
@@ -108,19 +108,19 @@ else
                                 <span><span id="card-page-@item.Id">@item.CurrentPage</span> / @item.Book?.TotalPages p</span>
                             </div>
                             <div class="progress mb-3" style="height: 6px;">
-                                <div class="progress-bar @(item.Status == ReadingStatus.Completed ? "bg-success" : "bg-primary")" 
+                                <div class="progress-bar @(item.Status == ReadingStatus.Completed ? "bg-success" : "")" 
                                      id="card-pbar-@item.Id" 
                                      role="progressbar" 
                                      style="width: @item.ProgressPercentage%;"></div>
                             </div>
 
                             <div class="d-flex justify-content-between align-items-center pt-2 border-top">
-                                <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-outline-primary btn-sm">
-                                    <i class="bi bi-journal-text"></i> 상세 &amp; 메모
+                                <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                                    <i class="bi bi-journal-text me-1"></i> 상세 &amp; 메모
                                 </a>
                                 <form asp-action="Delete" asp-route-id="@item.Id" method="post" class="d-inline" onsubmit="return confirm('서재에서 이 도서를 삭제하시겠습니까?');">
-                                    <button type="submit" class="btn btn-outline-danger btn-sm" title="삭제">
-                                        <i class="bi bi-trash"></i>
+                                    <button type="submit" class="btn btn-link text-danger text-decoration-none btn-sm p-1" title="삭제">
+                                        <i class="bi bi-trash fs-6"></i>
                                     </button>
                                 </form>
                             </div>

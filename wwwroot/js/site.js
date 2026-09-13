@@ -48,9 +48,10 @@ $(document).ready(function () {
                 $('#searchLoading').addClass('d-none');
                 if (!response.success || !response.data || response.data.length === 0) {
                     $('#searchResultsList').html(`
-                        <div class="col-12 text-center text-muted py-4">
-                            <i class="bi bi-search fs-2"></i>
-                            <p class="mt-2">검색 결과가 없습니다. 다른 검색어를 입력해 보세요.</p>
+                        <div class="col-12 text-center text-muted py-5">
+                            <i class="bi bi-search fs-1 text-muted opacity-50"></i>
+                            <h6 class="fw-bold mt-3 text-secondary">검색 결과가 없습니다</h6>
+                            <p class="small text-muted mb-0">다른 검색어나 키워드로 다시 검색해 보세요.</p>
                         </div>
                     `);
                     return;
@@ -59,34 +60,37 @@ $(document).ready(function () {
                 var html = '';
                 $.each(response.data, function (index, book) {
                     var coverImg = book.coverImageUrl ? 
-                        `<img src="${book.coverImageUrl}" alt="${book.title}" class="img-fluid rounded shadow-sm" style="max-height: 90px; object-fit: cover;" />` :
-                        `<div class="bg-secondary text-white rounded d-flex align-items-center justify-content-center" style="height: 90px;"><i class="bi bi-book fs-3"></i></div>`;
+                        `<img src="${book.coverImageUrl}" alt="${book.title}" class="search-book-cover" />` :
+                        `<div class="search-book-cover bg-light d-flex align-items-center justify-content-center text-secondary"><i class="bi bi-book fs-3"></i></div>`;
+
+                    var publisherBadge = book.publisher ? 
+                        `<span class="badge bg-light text-secondary border small me-1">${book.publisher}</span>` : '';
+                    var dateBadge = book.publishedDate ? 
+                        `<span class="text-muted small" style="font-size: 0.78rem;"><i class="bi bi-calendar3 me-1"></i>${book.publishedDate}</span>` : '';
 
                     html += `
                         <div class="col-12">
-                            <div class="card border-0 bg-light p-3">
-                                <div class="d-flex gap-3 align-items-center">
-                                    <div class="flex-shrink-0 text-center" style="width: 70px;">
-                                        ${coverImg}
+                            <div class="search-book-card">
+                                ${coverImg}
+                                <div class="search-book-info">
+                                    <div class="d-flex align-items-center gap-1 mb-1">
+                                        ${publisherBadge}
+                                        ${dateBadge}
                                     </div>
-                                    <div class="flex-grow-1 min-w-0">
-                                        <h6 class="fw-bold mb-1 text-truncate">${book.title}</h6>
-                                        <p class="text-muted small mb-1">${book.author || '저자 미상'} | ${book.publisher || '출판사 미상'}</p>
-                                        <p class="text-secondary small mb-0 text-truncate">${book.description || ''}</p>
-                                    </div>
-                                    <div class="flex-shrink-0">
-                                        <button type="button" class="btn btn-primary btn-sm btn-add-library" 
-                                            data-isbn="${book.isbn}" 
-                                            data-title="${book.title}" 
-                                            data-author="${book.author}" 
-                                            data-publisher="${book.publisher}" 
-                                            data-cover="${book.coverImageUrl}" 
-                                            data-pages="${book.totalPages}" 
-                                            data-desc="${book.description}">
-                                            <i class="bi bi-bookmark-plus"></i> 서재에 담기
-                                        </button>
-                                    </div>
+                                    <div class="search-book-title" title="${book.title}">${book.title}</div>
+                                    <div class="search-book-meta"><i class="bi bi-person me-1"></i>${book.author || '저자 미상'}</div>
+                                    <p class="search-book-desc">${book.description || '책 소개 정보가 없습니다.'}</p>
                                 </div>
+                                <button type="button" class="btn btn-add-shelf" 
+                                    data-isbn="${book.isbn}" 
+                                    data-title="${book.title}" 
+                                    data-author="${book.author}" 
+                                    data-publisher="${book.publisher}" 
+                                    data-cover="${book.coverImageUrl}" 
+                                    data-pages="${book.totalPages}" 
+                                    data-desc="${book.description}">
+                                    <i class="bi bi-plus-lg"></i> 서재에 담기
+                                </button>
                             </div>
                         </div>
                     `;
@@ -102,7 +106,7 @@ $(document).ready(function () {
     }
 
     // Add to library via Ajax
-    $(document).on('click', '.btn-add-library', function () {
+    $(document).on('click', '.btn-add-shelf', function () {
         var btn = $(this);
         var bookData = {
             isbn: btn.data('isbn'),
@@ -115,7 +119,7 @@ $(document).ready(function () {
             status: 1 // Reading
         };
 
-        btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> 추가 중...');
+        btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> 담는 중...');
 
         $.ajax({
             url: '/Search/AddToLibrary',
@@ -124,18 +128,19 @@ $(document).ready(function () {
             data: JSON.stringify(bookData),
             success: function (res) {
                 if (res.success) {
-                    btn.removeClass('btn-primary').addClass('btn-success').html('<i class="bi bi-check"></i> 담기 완료');
+                    btn.removeClass('btn-add-shelf').addClass('btn btn-success rounded-pill px-3')
+                       .html('<i class="bi bi-check2"></i> 담기 완료');
                     showToast(res.message, true);
                     setTimeout(function () {
                         location.reload();
-                    }, 1200);
+                    }, 1000);
                 } else {
-                    btn.prop('disabled', false).html('<i class="bi bi-bookmark-plus"></i> 서재에 담기');
+                    btn.prop('disabled', false).html('<i class="bi bi-plus-lg"></i> 서재에 담기');
                     showToast(res.message, false);
                 }
             },
             error: function () {
-                btn.prop('disabled', false).html('<i class="bi bi-bookmark-plus"></i> 서재에 담기');
+                btn.prop('disabled', false).html('<i class="bi bi-plus-lg"></i> 서재에 담기');
                 showToast('서재에 추가하지 못했습니다.', false);
             }
         });
@@ -241,7 +246,6 @@ $(document).ready(function () {
                 return;
             }
 
-            // Simple fast client-side markdown render for live preview
             var html = text
                 .replace(/^### (.*$)/gim, '<h6>$1</h6>')
                 .replace(/^## (.*$)/gim, '<h5>$1</h5>')
