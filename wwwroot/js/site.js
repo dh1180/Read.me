@@ -1,6 +1,9 @@
 // Read.me - Modern Reading Journal (ASP.NET Core MVC + jQuery Ajax)
 $(document).ready(function () {
 
+    // In-memory cache for search results to avoid HTML attribute quoting/escaping issues
+    var currentSearchResults = [];
+
     // --- Toast Notification Helper ---
     function showToast(message, isSuccess = true) {
         var toastEl = $('#appToast');
@@ -38,6 +41,7 @@ $(document).ready(function () {
 
         $('#searchLoading').removeClass('d-none');
         $('#searchResultsList').empty();
+        currentSearchResults = [];
 
         $.ajax({
             url: '/Search/Query',
@@ -57,16 +61,17 @@ $(document).ready(function () {
                     return;
                 }
 
+                currentSearchResults = response.data;
                 var html = '';
                 $.each(response.data, function (index, book) {
                     var coverImg = book.coverImageUrl ? 
-                        `<img src="${book.coverImageUrl}" alt="${book.title}" class="search-book-cover" />` :
+                        `<img src="${book.coverImageUrl}" alt="${escapeHtml(book.title)}" class="search-book-cover" />` :
                         `<div class="search-book-cover bg-light d-flex align-items-center justify-content-center text-secondary"><i class="bi bi-book fs-3"></i></div>`;
 
                     var publisherBadge = book.publisher ? 
-                        `<span class="badge bg-light text-secondary border small me-1">${book.publisher}</span>` : '';
+                        `<span class="badge bg-light text-secondary border small me-1">${escapeHtml(book.publisher)}</span>` : '';
                     var dateBadge = book.publishedDate ? 
-                        `<span class="text-muted small" style="font-size: 0.78rem;"><i class="bi bi-calendar3 me-1"></i>${book.publishedDate}</span>` : '';
+                        `<span class="text-muted small" style="font-size: 0.78rem;"><i class="bi bi-calendar3 me-1"></i>${escapeHtml(book.publishedDate)}</span>` : '';
 
                     html += `
                         <div class="col-12">
@@ -77,18 +82,11 @@ $(document).ready(function () {
                                         ${publisherBadge}
                                         ${dateBadge}
                                     </div>
-                                    <div class="search-book-title" title="${book.title}">${book.title}</div>
-                                    <div class="search-book-meta"><i class="bi bi-person me-1"></i>${book.author || '저자 미상'}</div>
-                                    <p class="search-book-desc">${book.description || '책 소개 정보가 없습니다.'}</p>
+                                    <div class="search-book-title" title="${escapeHtml(book.title)}">${escapeHtml(book.title)}</div>
+                                    <div class="search-book-meta"><i class="bi bi-person me-1"></i>${escapeHtml(book.author || '저자 미상')}</div>
+                                    <p class="search-book-desc">${escapeHtml(book.description || '책 소개 정보가 없습니다.')}</p>
                                 </div>
-                                <button type="button" class="btn btn-add-shelf" 
-                                    data-isbn="${book.isbn}" 
-                                    data-title="${book.title}" 
-                                    data-author="${book.author}" 
-                                    data-publisher="${book.publisher}" 
-                                    data-cover="${book.coverImageUrl}" 
-                                    data-pages="${book.totalPages}" 
-                                    data-desc="${book.description}">
+                                <button type="button" class="btn btn-add-shelf" data-index="${index}">
                                     <i class="bi bi-plus-lg"></i> 서재에 담기
                                 </button>
                             </div>
@@ -105,18 +103,36 @@ $(document).ready(function () {
         });
     }
 
-    // Add to library via Ajax
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    // Add to library via Ajax (Safely using array cache, avoiding HTML attribute breakages)
     $(document).on('click', '.btn-add-shelf', function () {
         var btn = $(this);
+        var index = parseInt(btn.data('index'));
+        var book = currentSearchResults[index];
+
+        if (!book) {
+            showToast('도서 정보를 읽을 수 없습니다.', false);
+            return;
+        }
+
         var bookData = {
-            isbn: btn.data('isbn'),
-            title: btn.data('title'),
-            author: btn.data('author'),
-            publisher: btn.data('publisher'),
-            coverImageUrl: btn.data('cover'),
-            totalPages: parseInt(btn.data('pages')) || 300,
-            description: btn.data('desc'),
-            status: 1 // Reading
+            isbn: book.isbn || '',
+            title: book.title || '제목 없음',
+            author: book.author || '',
+            publisher: book.publisher || '',
+            coverImageUrl: book.coverImageUrl || '',
+            totalPages: parseInt(book.totalPages) || 300,
+            description: book.description || '',
+            status: 1 // Reading (읽는 중)
         };
 
         btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> 담는 중...');
@@ -139,9 +155,13 @@ $(document).ready(function () {
                     showToast(res.message, false);
                 }
             },
-            error: function () {
+            error: function (xhr) {
                 btn.prop('disabled', false).html('<i class="bi bi-plus-lg"></i> 서재에 담기');
-                showToast('서재에 추가하지 못했습니다.', false);
+                var errMsg = '서재에 추가하지 못했습니다.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errMsg = xhr.responseJSON.message;
+                }
+                showToast(errMsg, false);
             }
         });
     });
