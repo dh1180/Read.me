@@ -18,43 +18,43 @@ public class HomeController : Controller
         _exportService = exportService;
     }
 
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(string sort = "latest", string? query = null)
     {
-        var readingCount = await _context.UserBooks.CountAsync(ub => ub.Status == ReadingStatus.Reading);
-        var completedCount = await _context.UserBooks.CountAsync(ub => ub.Status == ReadingStatus.Completed);
-        var wishlistCount = await _context.UserBooks.CountAsync(ub => ub.Status == ReadingStatus.Wishlist);
-        var totalNotesCount = await _context.ReadingNotes.CountAsync();
-
-        var currentlyReading = await _context.UserBooks
+        var bookReviewsQuery = _context.UserBooks
             .Include(ub => ub.Book)
-            .Where(ub => ub.Status == ReadingStatus.Reading)
-            .OrderByDescending(ub => ub.UpdatedAt)
-            .ToListAsync();
+            .AsQueryable();
 
-        var recentlyCompleted = await _context.UserBooks
-            .Include(ub => ub.Book)
-            .Where(ub => ub.Status == ReadingStatus.Completed)
-            .OrderByDescending(ub => ub.CompletedDate)
-            .Take(4)
-            .ToListAsync();
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            var q = query.Trim().ToLower();
+            bookReviewsQuery = bookReviewsQuery.Where(ub => 
+                (ub.Book != null && (ub.Book.Title.ToLower().Contains(q) || ub.Book.Author.ToLower().Contains(q))) ||
+                (ub.Summary != null && ub.Summary.ToLower().Contains(q)) ||
+                (ub.Quote != null && ub.Quote.ToLower().Contains(q)) ||
+                (ub.Content != null && ub.Content.ToLower().Contains(q)) ||
+                ub.ReviewerName.ToLower().Contains(q));
+        }
 
-        var recentNotes = await _context.ReadingNotes
-            .Include(n => n.UserBook)
-            .ThenInclude(ub => ub!.Book)
-            .OrderByDescending(n => n.CreatedAt)
-            .Take(4)
-            .ToListAsync();
+        bookReviewsQuery = sort switch
+        {
+            "popular" => bookReviewsQuery.OrderByDescending(ub => ub.LikesCount).ThenByDescending(ub => ub.CreatedAt),
+            "rating" => bookReviewsQuery.OrderByDescending(ub => ub.Rating).ThenByDescending(ub => ub.CreatedAt),
+            _ => bookReviewsQuery.OrderByDescending(ub => ub.CreatedAt)
+        };
+
+        var reviews = await bookReviewsQuery.ToListAsync();
+        var totalReviewsCount = await _context.UserBooks.CountAsync();
+        var totalBooksCount = await _context.Books.CountAsync();
+        var popularBooks = await _context.Books.OrderByDescending(b => b.UserBooks.Count).Take(6).ToListAsync();
 
         var model = new DashboardViewModel
         {
-            ReadingCount = readingCount,
-            CompletedCount = completedCount,
-            WishlistCount = wishlistCount,
-            TotalNotesCount = totalNotesCount,
-            YearlyGoal = 20,
-            CurrentlyReading = currentlyReading,
-            RecentlyCompleted = recentlyCompleted,
-            RecentNotes = recentNotes
+            TotalReviewsCount = totalReviewsCount,
+            TotalBooksCount = totalBooksCount,
+            Reviews = reviews,
+            PopularBooks = popularBooks,
+            CurrentSort = sort,
+            SearchQuery = query
         };
 
         return View(model);

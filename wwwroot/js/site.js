@@ -86,9 +86,14 @@ $(document).ready(function () {
                                     <div class="search-book-meta"><i class="bi bi-person me-1"></i>${escapeHtml(book.author || '저자 미상')}</div>
                                     <p class="search-book-desc">${escapeHtml(book.description || '책 소개 정보가 없습니다.')}</p>
                                 </div>
-                                <button type="button" class="btn btn-add-shelf" data-index="${index}">
-                                    <i class="bi bi-plus-lg"></i> 서재에 담기
-                                </button>
+                                <div class="d-flex flex-column gap-2 flex-shrink-0 ms-2">
+                                    <button type="button" class="btn btn-primary-gradient btn-sm rounded-pill px-3 py-2 btn-write-review-from-search" data-index="${index}">
+                                        <i class="bi bi-pencil-square me-1"></i> 독서록 쓰기
+                                    </button>
+                                    <button type="button" class="btn btn-add-shelf btn-sm py-1" data-index="${index}">
+                                        <i class="bi bi-bookmark-plus me-1"></i> 서재 보관
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     `;
@@ -166,93 +171,263 @@ $(document).ready(function () {
         });
     });
 
-    // --- 2. Dashboard Quick Page Update (Ajax) ---
-    $(document).on('click', '.btn-quick-save', function () {
-        var btn = $(this);
-        var id = btn.data('id');
-        var inputPage = $(`#input-quick-page-${id}`);
-        var page = parseInt(inputPage.val()) || 0;
+    // Write review directly from Search Modal
+    $(document).on('click', '.btn-write-review-from-search', function () {
+        var index = parseInt($(this).data('index'));
+        var book = currentSearchResults[index];
+        if (!book) return;
 
-        btn.prop('disabled', true).text('저장 중...');
+        // Hide search modal
+        var searchModalEl = document.getElementById('searchModal');
+        var searchModal = bootstrap.Modal.getInstance(searchModalEl);
+        if (searchModal) searchModal.hide();
+
+        // Select this book for review
+        selectBookForReview(book);
+
+        // Open write review modal
+        var writeReviewModalEl = document.getElementById('writeReviewModal');
+        var writeModal = new bootstrap.Modal(writeReviewModalEl);
+        writeModal.show();
+    });
+
+    // --- 2. Write Review Modal: Book Search & Selection ---
+    var reviewSearchResults = [];
+
+    $('#btnExecuteReviewSearch').on('click', function () {
+        performReviewBookSearch();
+    });
+
+    $('#inputReviewBookSearch').on('keypress', function (e) {
+        if (e.which === 13) {
+            e.preventDefault();
+            performReviewBookSearch();
+        }
+    });
+
+    function performReviewBookSearch() {
+        var query = $('#inputReviewBookSearch').val().trim();
+        if (!query) {
+            alert('검색할 도서명을 입력해 주세요.');
+            return;
+        }
+
+        $('#reviewSearchLoading').removeClass('d-none');
+        $('#reviewSearchResultsList').empty();
+        reviewSearchResults = [];
 
         $.ajax({
-            url: '/Books/UpdateProgress',
+            url: '/Search/Query',
+            type: 'GET',
+            data: { q: query },
+            dataType: 'json',
+            success: function (response) {
+                $('#reviewSearchLoading').addClass('d-none');
+                if (!response.success || !response.data || response.data.length === 0) {
+                    $('#reviewSearchResultsList').html(`
+                        <div class="text-center text-muted py-3">
+                            <span class="small">검색 결과가 없습니다. 다른 책 제목을 입력해 보세요.</span>
+                        </div>
+                    `);
+                    return;
+                }
+
+                reviewSearchResults = response.data;
+                var html = '';
+                $.each(response.data, function (index, book) {
+                    var coverImg = book.coverImageUrl ? 
+                        `<img src="${book.coverImageUrl}" alt="${escapeHtml(book.title)}" class="rounded shadow-sm" style="width: 36px; height: 50px; object-fit: cover;" />` :
+                        `<div class="bg-light rounded d-flex align-items-center justify-content-center text-secondary" style="width: 36px; height: 50px;"><i class="bi bi-book"></i></div>`;
+
+                    html += `
+                        <div class="review-book-select-item d-flex align-items-center justify-content-between p-2" data-index="${index}">
+                            <div class="d-flex align-items-center gap-2 min-w-0">
+                                ${coverImg}
+                                <div class="text-truncate">
+                                    <div class="fw-bold small text-dark text-truncate">${escapeHtml(book.title)}</div>
+                                    <div class="text-muted text-truncate" style="font-size: 0.78rem;">${escapeHtml(book.author || '저자 미상')} · ${escapeHtml(book.publisher || '')}</div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 py-1 flex-shrink-0 ms-2">
+                                선택
+                            </button>
+                        </div>
+                    `;
+                });
+
+                $('#reviewSearchResultsList').html(html);
+            },
+            error: function () {
+                $('#reviewSearchLoading').addClass('d-none');
+                showToast('도서 검색 중 오류가 발생했습니다.', false);
+            }
+        });
+    }
+
+    // Select book in review modal
+    $(document).on('click', '.review-book-select-item', function () {
+        var index = parseInt($(this).data('index'));
+        var book = reviewSearchResults[index];
+        if (!book) return;
+
+        selectBookForReview(book);
+    });
+
+    function selectBookForReview(book) {
+        $('#hiddenIsbn').val(book.isbn || '');
+        $('#hiddenTitle').val(book.title || '');
+        $('#hiddenAuthor').val(book.author || '');
+        $('#hiddenPublisher').val(book.publisher || '');
+        $('#hiddenCoverUrl').val(book.coverImageUrl || '');
+        $('#hiddenDesc').val(book.description || '');
+
+        $('#selectedBookCover').attr('src', book.coverImageUrl || '');
+        $('#selectedBookTitle').text(book.title || '제목 없음');
+        $('#selectedBookMeta').text((book.author || '저자 미상') + (book.publisher ? ' · ' + book.publisher : ''));
+
+        $('#sectionBookSearch').addClass('d-none');
+        $('#selectedBookCard').removeClass('d-none');
+
+        // Suggest summary title if empty
+        if (!$('#inputReviewSummary').val().trim()) {
+            $('#inputReviewSummary').val(`《${book.title}》을 읽고`);
+        }
+    }
+
+    // Change selected book
+    $('#btnChangeSelectedBook').on('click', function () {
+        $('#selectedBookCard').addClass('d-none');
+        $('#sectionBookSearch').removeClass('d-none');
+        $('#hiddenTitle').val('');
+    });
+
+    // --- 3. Star Rating Picker in Review Modal ---
+    var ratingDescriptions = {
+        1: '1.0점 (추천하지 않아요)',
+        2: '2.0점 (조금 아쉬워요)',
+        3: '3.0점 (보통이에요)',
+        4: '4.0점 (좋아요)',
+        5: '5.0점 (최고예요!)'
+    };
+
+    $('.star-pick').on('mouseenter', function () {
+        var hoverVal = parseInt($(this).data('value'));
+        updateStarDisplay(hoverVal);
+    });
+
+    $('#starRatingSelector').on('mouseleave', function () {
+        var currentVal = parseInt($('#inputReviewRating').val()) || 5;
+        updateStarDisplay(currentVal);
+    });
+
+    $('.star-pick').on('click', function () {
+        var selectedVal = parseInt($(this).data('value'));
+        $('#inputReviewRating').val(selectedVal);
+        $('#lblRatingDescription').text(ratingDescriptions[selectedVal] || `${selectedVal}.0점`);
+        updateStarDisplay(selectedVal);
+    });
+
+    function updateStarDisplay(rating) {
+        $('.star-pick').each(function () {
+            var starVal = parseInt($(this).data('value'));
+            if (starVal <= rating) {
+                $(this).addClass('active bi-star-fill').removeClass('bi-star text-black-50');
+            } else {
+                $(this).removeClass('active bi-star-fill').addClass('bi-star text-black-50');
+            }
+        });
+    }
+
+    // --- 4. Submit Review via Ajax ---
+    $('#btnSubmitReview').on('click', function () {
+        var title = $('#hiddenTitle').val();
+        if (!title) {
+            alert('독서록을 작성할 책을 1단계에서 먼저 검색하고 선택해 주세요.');
+            $('#inputReviewBookSearch').focus();
+            return;
+        }
+
+        var content = $('#inputReviewContent').val().trim();
+        if (!content) {
+            alert('독서 감상평 내용을 입력해 주세요.');
+            $('#inputReviewContent').focus();
+            return;
+        }
+
+        var btn = $(this);
+        btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> 등록 중...');
+
+        var reviewData = {
+            isbn: $('#hiddenIsbn').val(),
+            title: title,
+            author: $('#hiddenAuthor').val(),
+            publisher: $('#hiddenPublisher').val(),
+            coverImageUrl: $('#hiddenCoverUrl').val(),
+            description: $('#hiddenDesc').val(),
+            reviewerName: $('#inputReviewer').val().trim() || '익명의 독서가',
+            rating: parseInt($('#inputReviewRating').val()) || 5,
+            quote: $('#inputReviewQuote').val().trim(),
+            summary: $('#inputReviewSummary').val().trim(),
+            content: content
+        };
+
+        $.ajax({
+            url: '/Books/CreateReview',
             type: 'POST',
             contentType: 'application/json',
-            data: JSON.stringify({ userBookId: id, currentPage: page }),
+            data: JSON.stringify(reviewData),
             success: function (res) {
-                btn.prop('disabled', false).text('저장');
+                btn.prop('disabled', false).html('<i class="bi bi-pencil-square me-1"></i> 독서록 등록하기');
                 if (res.success) {
-                    $(`#curr-page-text-${id}`).text(res.data.currentPage);
-                    $(`#pct-text-${id}`).text(res.data.progressPercentage + '%');
-                    $(`#progress-bar-${id}`).css('width', res.data.progressPercentage + '%');
                     showToast(res.message, true);
+                    var modalEl = document.getElementById('writeReviewModal');
+                    var modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+
+                    setTimeout(function () {
+                        location.reload();
+                    }, 800);
                 } else {
                     showToast(res.message, false);
                 }
             },
-            error: function () {
-                btn.prop('disabled', false).text('저장');
-                showToast('진행률 저장 중 오류가 발생했습니다.', false);
+            error: function (xhr) {
+                btn.prop('disabled', false).html('<i class="bi bi-pencil-square me-1"></i> 독서록 등록하기');
+                var errMsg = '독서록 등록에 실패했습니다.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errMsg = xhr.responseJSON.message;
+                }
+                showToast(errMsg, false);
             }
         });
     });
 
-    // --- 3. Book Details Progress Slider (Ajax) ---
-    var rangeProgress = $('#rangeProgress');
-    var inputCurrentPage = $('#inputCurrentPage');
-    var lblProgressPercentage = $('#lblProgressPercentage');
-    var detailProgressBar = $('#detailProgressBar');
+    // --- 5. Community Like Button (Ajax) ---
+    $(document).on('click', '.btn-like-review', function () {
+        var btn = $(this);
+        var id = btn.data('id');
+        var heartIcon = btn.find('i');
+        var likeCountEl = btn.find('.like-count');
 
-    if (rangeProgress.length) {
-        var totalPages = parseInt(rangeProgress.attr('max')) || 300;
-
-        rangeProgress.on('input', function () {
-            var val = $(this).val();
-            inputCurrentPage.val(val);
-            var pct = Math.round(val / totalPages * 100);
-            lblProgressPercentage.text(pct);
-            detailProgressBar.css('width', pct + '%');
-        });
-
-        inputCurrentPage.on('input', function () {
-            var val = Math.min(totalPages, Math.max(0, parseInt($(this).val()) || 0));
-            rangeProgress.val(val);
-            var pct = Math.round(val / totalPages * 100);
-            lblProgressPercentage.text(pct);
-            detailProgressBar.css('width', pct + '%');
-        });
-
-        $('#btnUpdateProgressAjax').on('click', function () {
-            var btn = $(this);
-            var id = btn.data('id');
-            var page = parseInt(inputCurrentPage.val()) || 0;
-
-            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> 저장 중...');
-
-            $.ajax({
-                url: '/Books/UpdateProgress',
-                type: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify({ userBookId: id, currentPage: page }),
-                success: function (res) {
-                    btn.prop('disabled', false).html('<i class="bi bi-check-lg"></i> 저장');
-                    if (res.success) {
-                        showToast(res.message, true);
-                        if (res.data.status === 'Completed') {
-                            $('#badge-detail-status').removeClass('bg-primary bg-warning').addClass('bg-success').text('Completed');
-                        }
-                    } else {
-                        showToast(res.message, false);
-                    }
-                },
-                error: function () {
-                    btn.prop('disabled', false).html('<i class="bi bi-check-lg"></i> 저장');
-                    showToast('진행률 업데이트에 실패했습니다.', false);
+        $.ajax({
+            url: `/Books/Like/${id}`,
+            type: 'POST',
+            success: function (res) {
+                if (res.success && res.data) {
+                    likeCountEl.text(res.data.likes);
+                    heartIcon.css('transform', 'scale(1.5)');
+                    setTimeout(function () {
+                        heartIcon.css('transform', 'scale(1)');
+                    }, 200);
+                    showToast('이 독서록에 공감했습니다! ❤️', true);
                 }
-            });
+            },
+            error: function () {
+                showToast('좋아요 처리 중 오류가 발생했습니다.', false);
+            }
         });
-    }
+    });
+
 
     // --- 4. Live Markdown Note Editor & Ajax Save ---
     var inputNoteThought = $('#inputNoteThought');

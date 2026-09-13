@@ -40,6 +40,17 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = services.GetRequiredService<ReadmeDbContext>();
+        try
+        {
+            // Test if schema matches current UserBook model
+            _ = context.UserBooks.FirstOrDefault();
+        }
+        catch
+        {
+            logger.LogWarning("기존 데이터베이스 스키마가 변경되어 최신 모델로 재생성합니다.");
+            context.Database.EnsureDeleted();
+        }
+
         context.Database.EnsureCreated();
         ReadmeDbContext.SeedSampleData(context);
         logger.LogInformation("데이터베이스 초기화 및 샘플 시드 데이터 준비 완료.");

@@ -370,3 +370,53 @@ body {
   background: var(--primary);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
 }
+
+/* --- Star Rating Picker --- */
+.star-rating-picker {
+  display: inline-flex;
+  gap: 4px;
+}
+.star-rating-picker .star-pick {
+  color: #cbd5e1;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+.star-rating-picker .star-pick.active {
+  color: #f59e0b;
+}
+.star-rating-picker .star-pick:hover {
+  transform: scale(1.25);
+}
+
+/* --- Like Button Animation --- */
+.btn-like-review {
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.btn-like-review:active i {
+  transform: scale(1.4);
+}
+.btn-like-review i {
+  transition: transform 0.2s ease;
+}
+
+/* --- Compact Review Book Search Item --- */
+.review-book-select-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background-color: #ffffff;
+  padding: 8px 12px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+.review-book-select-item:hover {
+  border-color: #6366f1;
+  background-color: #f8faff;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+/* --- Quote Callout Box --- */
+.quote-callout {
+  background: #f8fafc;
+  border-left: 4px solid var(--primary);
+  border-radius: 0 12px 12px 0;
+}

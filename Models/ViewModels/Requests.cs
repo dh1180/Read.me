@@ -1,5 +1,22 @@
 namespace ReadMeApp.Models.ViewModels;
 
+public class CreateReviewRequest
+{
+    public string Isbn { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string Author { get; set; } = string.Empty;
+    public string Publisher { get; set; } = string.Empty;
+    public string CoverImageUrl { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+
+    public string ReviewerName { get; set; } = "익명의 독서가";
+    public int Rating { get; set; } = 5;
+    public string? Summary { get; set; }
+    public string? Quote { get; set; }
+    public string Content { get; set; } = string.Empty;
+    public DateTime? ReadDate { get; set; }
+}
+
 public class UpdateProgressRequest
 {
     public int UserBookId { get; set; }
@@ -24,7 +41,7 @@ public class AddBookRequest
     public string CoverImageUrl { get; set; } = string.Empty;
     public int TotalPages { get; set; } = 300;
     public string Description { get; set; } = string.Empty;
-    public ReadingStatus Status { get; set; } = ReadingStatus.Wishlist;
+    public ReadingStatus Status { get; set; } = ReadingStatus.Completed;
 }
 
 public class BookSearchResultDto

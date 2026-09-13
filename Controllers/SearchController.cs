@@ -101,9 +101,13 @@ public class SearchController : Controller
             var userBook = new UserBook
             {
                 BookId = book.Id,
-                Status = request.Status == 0 ? ReadingStatus.Reading : request.Status,
-                CurrentPage = 0,
-                StartDate = DateTime.UtcNow
+                ReviewerName = "익명의 독서가",
+                Rating = 5,
+                Summary = "서재에 보관 중인 도서",
+                Content = desc.Length > 200 ? desc[..200] + "..." : desc,
+                Status = ReadingStatus.Completed,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
 
             _context.UserBooks.Add(userBook);

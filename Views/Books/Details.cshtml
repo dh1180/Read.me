@@ -1,86 +1,129 @@
 @model ReadMeApp.Models.UserBook
 @using ReadMeApp.Models
 @{
-    ViewData["Title"] = Model.Book?.Title ?? "도서 상세";
-    var totalPages = Model.Book?.TotalPages ?? 300;
+    ViewData["Title"] = Model.Book?.Title ?? "독서록 상세";
 }
 
-<div class="mb-4">
-    <a asp-action="Index" class="btn btn-outline-secondary btn-sm mb-3">
-        <i class="bi bi-arrow-left"></i> 서재 목록으로 돌아가기
+<div class="mb-4 d-flex justify-content-between align-items-center">
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+        <i class="bi bi-arrow-left me-1"></i> 서재 목록으로
     </a>
+    <button type="button" class="btn btn-primary-gradient btn-sm px-3 rounded-pill" data-bs-toggle="modal" data-bs-target="#writeReviewModal">
+        <i class="bi bi-pencil-square me-1"></i> 새 독서록 작성
+    </button>
 </div>
 
 <!-- Book Header Card -->
-<div class="card border-0 shadow-sm mb-4">
-    <div class="card-body p-4">
-        <div class="row g-4 align-items-center">
-            <div class="col-md-3 col-lg-2 text-center">
+<div class="card border-0 shadow-sm mb-4" style="border-radius: 16px;">
+    <div class="card-body p-4 p-md-5">
+        <div class="row g-4 align-items-start">
+            <div class="col-md-3 text-center">
                 @if (!string.IsNullOrWhiteSpace(Model.Book?.CoverImageUrl))
                 {
-                    <img src="@Model.Book.CoverImageUrl" alt="@Model.Book.Title" class="img-fluid rounded shadow" style="max-height: 220px; object-fit: cover;" />
+                    <img src="@Model.Book.CoverImageUrl" alt="@Model.Book.Title" class="img-fluid rounded shadow-sm shelf-book-cover" style="max-height: 240px; object-fit: cover;" />
                 }
                 else
                 {
-                    <div class="bg-secondary text-white rounded d-flex align-items-center justify-content-center" style="height: 180px;">
+                    <div class="bg-secondary text-white rounded d-flex align-items-center justify-content-center mx-auto" style="height: 200px; width: 140px;">
                         <i class="bi bi-book fs-1"></i>
                     </div>
                 }
             </div>
-            <div class="col-md-9 col-lg-10">
+            <div class="col-md-9">
                 <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                    <span class="badge @(Model.Status == ReadingStatus.Completed ? "bg-success" : Model.Status == ReadingStatus.Reading ? "bg-primary" : "bg-warning text-dark") fs-6" id="badge-detail-status">
-                        @Model.Status
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1 rounded-pill">
+                        <i class="bi bi-book me-1"></i> 독서록
                     </span>
                     <span class="text-muted small">ISBN: @Model.Book?.Isbn</span>
                 </div>
-                <h2 class="fw-bold mb-2">@Model.Book?.Title</h2>
-                <h5 class="text-muted mb-3">@Model.Book?.Author | @Model.Book?.Publisher</h5>
+                <h2 class="fw-bold mb-2 text-dark">@Model.Book?.Title</h2>
+                <h5 class="text-muted mb-3 fs-6">@(Model.Book?.Author ?? "저자 미상") | @(Model.Book?.Publisher ?? "")</h5>
                 
                 @if (!string.IsNullOrWhiteSpace(Model.Book?.Description))
                 {
-                    <p class="text-secondary small mb-3">@Model.Book.Description</p>
+                    <p class="text-secondary small mb-3" style="line-height: 1.6;">@Model.Book.Description</p>
                 }
 
                 <div class="d-flex flex-wrap gap-4 text-muted small border-top pt-3">
-                    <div><i class="bi bi-file-text"></i> 총 <strong>@totalPages</strong> 페이지</div>
-                    <div><i class="bi bi-calendar-check"></i> 시작일: <strong>@(Model.StartDate?.ToString("yyyy-MM-dd") ?? "미시작")</strong></div>
-                    <div><i class="bi bi-check2-circle"></i> 완독일: <strong>@(Model.CompletedDate?.ToString("yyyy-MM-dd") ?? "진행 중")</strong></div>
+                    <div><i class="bi bi-person me-1"></i> 작성자: <strong>@Model.ReviewerName</strong></div>
+                    <div><i class="bi bi-calendar3 me-1"></i> 완독일: <strong>@Model.ReadDate.ToString("yyyy년 MM월 dd일")</strong></div>
+                    <div><i class="bi bi-heart-fill text-danger me-1"></i> 좋아요: <strong>@Model.LikesCount</strong>개</div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Interactive Reading Progress (jQuery Ajax) -->
-<div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-white py-3 border-0">
-        <h5 class="fw-bold mb-0"><i class="bi bi-sliders text-primary"></i> 독서 진행률 관리 (실시간 Ajax)</h5>
-    </div>
-    <div class="card-body p-4 pt-0">
-        <div class="row align-items-center g-3">
-            <div class="col-md-7">
-                <label for="rangeProgress" class="form-label d-flex justify-content-between">
-                    <span>슬라이더로 페이지 조절</span>
-                    <span class="fw-bold text-primary"><span id="lblProgressPercentage">@Model.ProgressPercentage</span>% 완료</span>
-                </label>
-                <input type="range" class="form-range" id="rangeProgress" min="0" max="@totalPages" value="@Model.CurrentPage" />
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">읽은 페이지 수</label>
-                <div class="input-group">
-                    <input type="number" class="form-control" id="inputCurrentPage" min="0" max="@totalPages" value="@Model.CurrentPage" />
-                    <span class="input-group-text">/ @totalPages p</span>
-                </div>
-            </div>
-            <div class="col-md-2 d-flex align-items-end">
-                <button type="button" class="btn btn-primary w-100" id="btnUpdateProgressAjax" data-id="@Model.Id">
-                    <i class="bi bi-check-lg"></i> 저장
-                </button>
+<!-- Reading Review Main Card -->
+<div class="card border-0 shadow-sm mb-4" style="border-radius: 16px;">
+    <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-warning-subtle text-warning p-2 rounded-3">
+                <i class="bi bi-star-fill fs-5"></i>
+            </span>
+            <div>
+                <h5 class="fw-bold mb-0 text-dark">독서 감상평</h5>
+                <span class="text-muted small">@Model.ReviewerName 님이 남긴 기록</span>
             </div>
         </div>
-        <div class="progress mt-3" style="height: 10px;">
-            <div class="progress-bar bg-primary" id="detailProgressBar" role="progressbar" style="width: @Model.ProgressPercentage%;"></div>
+
+        <!-- Star Rating Display -->
+        <div class="d-flex align-items-center gap-1">
+            @for (int i = 1; i <= 5; i++)
+            {
+                if (i <= Model.Rating)
+                {
+                    <i class="bi bi-star-fill text-warning fs-5"></i>
+                }
+                else
+                {
+                    <i class="bi bi-star text-black-50 opacity-25 fs-5"></i>
+                }
+            }
+            <span class="fw-bold fs-5 text-dark ms-2">@Model.Rating.0 / 5.0</span>
+        </div>
+    </div>
+
+    <div class="card-body p-4 pt-2">
+        <!-- Memorable Quote (if exists) -->
+        @if (!string.IsNullOrWhiteSpace(Model.Quote))
+        {
+            <div class="quote-callout my-3 p-4 rounded-3 position-relative" style="background: #faf5ff; border-left: 5px solid #8b5cf6;">
+                <i class="bi bi-quote text-primary opacity-50 fs-2 position-absolute" style="top: -2px; left: 8px;"></i>
+                <h6 class="fw-bold text-dark mb-1 ps-4" style="font-size: 0.85rem; color: #6d28d9 !important;">
+                    <i class="bi bi-lightbulb-fill me-1"></i> 인상 깊은 한 문장
+                </h6>
+                <p class="mb-0 text-dark fst-italic ps-4 fs-6" style="line-height: 1.7;">
+                    "@Model.Quote"
+                </p>
+            </div>
+        }
+
+        <!-- Summary / One-line Review -->
+        @if (!string.IsNullOrWhiteSpace(Model.Summary))
+        {
+            <div class="alert alert-light border my-3 py-2 px-3 rounded-3">
+                <strong class="text-primary me-2"><i class="bi bi-chat-heart me-1"></i> 한 줄 평:</strong>
+                <span class="fw-semibold text-dark">@Model.Summary</span>
+            </div>
+        }
+
+        <!-- Full Review Body -->
+        <div class="review-body p-3 my-3 bg-light rounded-3">
+            <h6 class="fw-bold text-secondary mb-2" style="font-size: 0.85rem;">
+                <i class="bi bi-file-earmark-text me-1"></i> 상세 감상평
+            </h6>
+            <div class="text-dark fs-6" style="white-space: pre-line; line-height: 1.8;">
+                @Model.Content
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center pt-3 border-top mt-4">
+            <button type="button" class="btn btn-outline-danger rounded-pill px-4 py-2 btn-like-review" data-id="@Model.Id">
+                <i class="bi bi-heart-fill me-1"></i>
+                이 독서록에 공감해요 <strong class="like-count" id="like-count-@Model.Id">@Model.LikesCount</strong>
+            </button>
+            <span class="text-muted small">작성일: @Model.CreatedAt.ToString("yyyy.MM.dd HH:mm")</span>
         </div>
     </div>
 </div>
@@ -89,9 +132,9 @@
 <div class="row g-4">
     <!-- Left: New Note Form with Live Markdown Preview -->
     <div class="col-lg-5">
-        <div class="card border-0 shadow-sm sticky-top" style="top: 80px;">
+        <div class="card border-0 shadow-sm sticky-top" style="top: 80px; border-radius: 16px;">
             <div class="card-header bg-white py-3 border-0">
-                <h5 class="fw-bold mb-0"><i class="bi bi-pencil-square text-success"></i> 필사 &amp; 메모 작성</h5>
+                <h5 class="fw-bold mb-0"><i class="bi bi-pencil-square text-success me-1"></i> 추가 메모 &amp; 필사 남기기</h5>
             </div>
             <div class="card-body p-4 pt-0">
                 <form id="formAddNote">
@@ -99,32 +142,32 @@
                     
                     <div class="mb-3">
                         <label for="inputNotePage" class="form-label small fw-bold">페이지 번호</label>
-                        <input type="number" class="form-control form-control-sm" id="inputNotePage" min="1" max="@totalPages" value="@(Model.CurrentPage > 0 ? Model.CurrentPage : 1)" placeholder="예: 42" required />
+                        <input type="number" class="form-control form-control-sm rounded-3" id="inputNotePage" min="1" value="1" placeholder="예: 42" required />
                     </div>
 
                     <div class="mb-3">
-                        <label for="inputNoteQuote" class="form-label small fw-bold">인상 깊은 문장 (인용구)</label>
-                        <textarea class="form-control form-control-sm" id="inputNoteQuote" rows="3" placeholder="책 속에서 기억하고 싶은 구절을 적어보세요..."></textarea>
+                        <label for="inputNoteQuote" class="form-label small fw-bold">책 속 인용구 (선택)</label>
+                        <textarea class="form-control form-control-sm rounded-3" id="inputNoteQuote" rows="2" placeholder="기억하고 싶은 구절을 적어보세요..."></textarea>
                     </div>
 
                     <div class="mb-3">
                         <div class="d-flex justify-content-between align-items-center">
-                            <label for="inputNoteThought" class="form-label small fw-bold mb-0">생각 &amp; 감상 (Markdown 지원)</label>
+                            <label for="inputNoteThought" class="form-label small fw-bold mb-0">생각 &amp; 메모</label>
                             <span class="badge bg-light text-secondary border small"># bold, *italic*, > quote</span>
                         </div>
-                        <textarea class="form-control form-control-sm mt-1" id="inputNoteThought" rows="4" placeholder="이 문장에 대한 내 생각, 적용하고 싶은 점을 적어보세요." required></textarea>
+                        <textarea class="form-control form-control-sm rounded-3 mt-1" id="inputNoteThought" rows="3" placeholder="이 문장에 대한 내 생각이나 메모를 남겨보세요." required></textarea>
                     </div>
 
                     <!-- Live Markdown Preview -->
                     <div class="mb-3">
-                        <label class="form-label small fw-bold text-muted">실시간 마크다운 미리보기</label>
-                        <div class="p-3 bg-light rounded border small" id="noteLivePreview" style="min-height: 60px;">
+                        <label class="form-label small fw-bold text-muted">실시간 미리보기</label>
+                        <div class="p-3 bg-light rounded border small" id="noteLivePreview" style="min-height: 50px;">
                             <em class="text-muted">입력한 내용이 실시간으로 여기에 렌더링됩니다.</em>
                         </div>
                     </div>
 
-                    <button type="button" class="btn btn-success w-100" id="btnSaveNoteAjax">
-                        <i class="bi bi-save"></i> 메모 저장 (Ajax)
+                    <button type="button" class="btn btn-success w-100 rounded-pill" id="btnSaveNoteAjax">
+                        <i class="bi bi-save me-1"></i> 메모 저장
                     </button>
                 </form>
             </div>
@@ -135,17 +178,17 @@
     <div class="col-lg-7">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="fw-bold mb-0">
-                <i class="bi bi-chat-left-quote-fill text-info"></i> 기록된 노트 목록 (<span id="notesCount">@Model.Notes.Count</span>)
+                <i class="bi bi-chat-left-quote-fill text-info me-1"></i> 추가 기록 목록 (<span id="notesCount">@Model.Notes.Count</span>)
             </h5>
         </div>
 
         <div id="notesContainer" class="d-flex flex-column gap-3">
             @if (Model.Notes.Count == 0)
             {
-                <div class="card border-0 shadow-sm text-center py-5" id="emptyNotesPlaceholder">
+                <div class="card border-0 shadow-sm text-center py-5" id="emptyNotesPlaceholder" style="border-radius: 16px;">
                     <div class="card-body">
                         <i class="bi bi-journal-text text-muted fs-1"></i>
-                        <p class="text-muted mt-2">아직 기록된 필사/메모가 없습니다.<br />왼쪽 폼에서 첫 번째 메모를 작성해 보세요!</p>
+                        <p class="text-muted mt-2">아직 기록된 추가 필사/메모가 없습니다.<br />왼쪽 폼에서 필요한 메모를 남겨보세요!</p>
                     </div>
                 </div>
             }
@@ -153,9 +196,9 @@
             {
                 @foreach (var note in Model.Notes)
                 {
-                    <div class="card border-0 shadow-sm p-3 border-start border-4 border-info" id="note-item-@note.Id">
+                    <div class="card border-0 shadow-sm p-3 border-start border-4 border-info" id="note-item-@note.Id" style="border-radius: 12px;">
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="badge bg-primary">p.@note.PageNumber</span>
+                            <span class="badge bg-primary rounded-pill px-2">p.@note.PageNumber</span>
                             <div class="d-flex align-items-center gap-2">
                                 <span class="text-muted small">@note.CreatedAt.ToString("yyyy-MM-dd HH:mm")</span>
                                 <button type="button" class="btn btn-outline-danger btn-sm py-0 px-1 btn-delete-note" data-id="@note.Id" title="메모 삭제">
@@ -180,3 +223,4 @@
         </div>
     </div>
 </div>
+
