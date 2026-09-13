@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using ReadMeApp.Data;
@@ -7,6 +8,17 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+
+// Authentication Configuration (Cookie Auth for Kakao OAuth)
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/Auth/Login";
+        options.LogoutPath = "/Auth/Logout";
+        options.ExpireTimeSpan = TimeSpan.FromDays(14);
+        options.SlidingExpiration = true;
+        options.Cookie.Name = "Readme_Auth";
+    });
 
 // Database Configuration (Supports MS SQL Server & SQLite fallback)
 var provider = builder.Configuration["DatabaseProvider"] ?? "Sqlite";
@@ -28,6 +40,7 @@ builder.Services.AddDbContext<ReadmeDbContext>(options =>
 
 // Register Application Services
 builder.Services.AddHttpClient<IBookSearchService, KakaoBookSearchService>();
+builder.Services.AddHttpClient<IKakaoAuthService, KakaoAuthService>();
 builder.Services.AddScoped<IReadmeExportService, ReadmeExportService>();
 
 var app = builder.Build();
@@ -77,6 +90,7 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(
