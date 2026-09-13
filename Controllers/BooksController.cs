@@ -64,6 +64,126 @@ public class BooksController : Controller
         return View(userBook);
     }
 
+    // GET: /Books/Create
+    [HttpGet]
+    public IActionResult Create(string? isbn = null, string? title = null, string? author = null, string? cover = null)
+    {
+        var model = new CreateReviewRequest
+        {
+            Isbn = isbn ?? string.Empty,
+            Title = title ?? string.Empty,
+            Author = author ?? string.Empty,
+            CoverImageUrl = cover ?? string.Empty,
+            ReviewerName = User.Identity?.IsAuthenticated == true && !string.IsNullOrWhiteSpace(User.Identity.Name)
+                ? User.Identity.Name
+                : "익명의 독서가",
+            Rating = 5,
+            ReadDate = DateTime.Today
+        };
+        return View(model);
+    }
+
+    // POST: /Books/Create
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create(CreateReviewRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Title))
+        {
+            ModelState.AddModelError("Title", "도서명을 입력하거나 도서를 검색해 선택해 주세요.");
+            return View(request);
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Content))
+        {
+            ModelState.AddModelError("Content", "독서 감상평 본문을 작성해 주세요.");
+            return View(request);
+        }
+
+        try
+        {
+            var isbn = string.IsNullOrWhiteSpace(request.Isbn)
+                ? Guid.NewGuid().ToString("N")[..13]
+                : request.Isbn.Trim();
+            if (isbn.Length > 50) isbn = isbn[..50];
+
+            var title = request.Title.Trim();
+            if (title.Length > 200) title = title[..200];
+
+            var author = request.Author?.Trim() ?? "저자 미상";
+            if (author.Length > 100) author = author[..100];
+
+            var publisher = request.Publisher?.Trim() ?? "";
+            if (publisher.Length > 100) publisher = publisher[..100];
+
+            var cover = request.CoverImageUrl?.Trim() ?? "";
+            if (cover.Length > 500) cover = cover[..500];
+
+            var desc = request.Description?.Trim() ?? "";
+            if (desc.Length > 2000) desc = desc[..2000];
+
+            var book = await _context.Books.FirstOrDefaultAsync(b => b.Isbn == isbn);
+            if (book == null)
+            {
+                book = new Book
+                {
+                    Isbn = isbn,
+                    Title = title,
+                    Author = author,
+                    Publisher = publisher,
+                    CoverImageUrl = cover,
+                    TotalPages = 300,
+                    Description = desc
+                };
+                _context.Books.Add(book);
+                await _context.SaveChangesAsync();
+            }
+
+            var reviewer = string.IsNullOrWhiteSpace(request.ReviewerName)
+                ? (User.Identity?.IsAuthenticated == true && !string.IsNullOrWhiteSpace(User.Identity.Name) ? User.Identity.Name : "익명의 독서가")
+                : request.ReviewerName.Trim();
+            if (reviewer.Length > 50) reviewer = reviewer[..50];
+
+            var summary = request.Summary?.Trim();
+            if (summary != null && summary.Length > 200) summary = summary[..200];
+
+            var quote = request.Quote?.Trim();
+            if (quote != null && quote.Length > 500) quote = quote[..500];
+
+            var content = request.Content.Trim();
+            if (content.Length > 4000) content = content[..4000];
+
+            var rating = Math.Clamp(request.Rating, 1, 5);
+
+            var userBook = new UserBook
+            {
+                BookId = book.Id,
+                ReviewerName = reviewer,
+                Rating = rating,
+                Summary = summary,
+                Quote = quote,
+                Content = content,
+                ReadDate = request.ReadDate ?? DateTime.UtcNow,
+                LikesCount = 0,
+                Status = ReadingStatus.Completed,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _context.UserBooks.Add(userBook);
+            await _context.SaveChangesAsync();
+
+            TempData["AuthSuccess"] = $"'{title}' 독서록이 성공적으로 등록되었습니다!";
+            return RedirectToAction("Index", "Home");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "독서록 작성 중 오류 발생");
+            ModelState.AddModelError(string.Empty, "독서록 저장 중 오류가 발생했습니다.");
+            return View(request);
+        }
+    }
+
     // POST: /Books/CreateReview (Ajax)
     [HttpPost]
     public async Task<IActionResult> CreateReview([FromBody] CreateReviewRequest? request)
@@ -120,7 +240,7 @@ public class BooksController : Controller
 
             // 2. Create UserBook (Review)
             var reviewer = string.IsNullOrWhiteSpace(request.ReviewerName)
-                ? "익명의 독서가"
+                ? (User.Identity?.IsAuthenticated == true && !string.IsNullOrWhiteSpace(User.Identity.Name) ? User.Identity.Name : "익명의 독서가")
                 : request.ReviewerName.Trim();
             if (reviewer.Length > 50) reviewer = reviewer[..50];
 

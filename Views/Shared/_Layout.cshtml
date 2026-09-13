@@ -1,12 +1,84 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+    <!-- Google tag (gtag.js) - Google Analytics 4 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-27YGZ0KWJF"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-27YGZ0KWJF');
+    </script>
+
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Read.me</title>
+    
+    @{
+        var pageTitle = ViewData["Title"]?.ToString() ?? "모두의 독서록";
+        var metaDesc = ViewData["MetaDescription"]?.ToString() ?? "읽은 책의 솔직한 생각과 인상 깊은 한 문장을 기록하고 나누는 모던 독서 기록 커뮤니티 Read.me입니다.";
+        var ogTitle = ViewData["OgTitle"]?.ToString() ?? $"{pageTitle} - Read.me";
+        var ogDesc = ViewData["OgDescription"]?.ToString() ?? metaDesc;
+        var ogType = ViewData["OgType"]?.ToString() ?? "website";
+        var currentUrl = $"{Context.Request.Scheme}://{Context.Request.Host}{Context.Request.Path}";
+        var defaultOgImage = $"{Context.Request.Scheme}://{Context.Request.Host}/favicon-512x512.png";
+        var ogImage = ViewData["OgImage"]?.ToString() ?? defaultOgImage;
+    }
+
+    <title>@pageTitle - Read.me</title>
+
+    <!-- Primary SEO Meta Tags -->
+    <meta name="title" content="@ogTitle" />
+    <meta name="description" content="@metaDesc" />
+    <meta name="keywords" content="독서록, 서평, 독서 기록, 책 추천, 독서 일기, 책 속 한 문장, 북로그, 북리뷰, Read.me" />
+    <meta name="author" content="Read.me" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="@currentUrl" />
+
+    <!-- Open Graph / KakaoTalk / Facebook Preview -->
+    <meta property="og:type" content="@ogType" />
+    <meta property="og:site_name" content="Read.me - 모두의 독서록" />
+    <meta property="og:url" content="@currentUrl" />
+    <meta property="og:title" content="@ogTitle" />
+    <meta property="og:description" content="@ogDesc" />
+    <meta property="og:image" content="@ogImage" />
+    <meta property="og:locale" content="ko_KR" />
+
+    <!-- Twitter Card Preview -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="@currentUrl" />
+    <meta name="twitter:title" content="@ogTitle" />
+    <meta name="twitter:description" content="@ogDesc" />
+    <meta name="twitter:image" content="@ogImage" />
+
+    <!-- Schema.org WebSite Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@@context": "https://schema.org",
+      "@@type": "WebSite",
+      "name": "Read.me",
+      "alternateName": "모두의 독서록",
+      "url": "@($"{Context.Request.Scheme}://{Context.Request.Host}")",
+      "description": "책 속의 문장과 생각을 기록하고 나누는 오픈 독서록 플랫폼",
+      "potentialAction": {
+        "@@type": "SearchAction",
+        "target": "@($"{Context.Request.Scheme}://{Context.Request.Host}")/?query={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    
+    <!-- Favicon & Mobile Touch Icons (Read.me Black & Purple Theme) -->
+    <link rel="icon" type="image/svg+xml" href="~/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="~/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="~/favicon-16x16.png" />
+    <link rel="shortcut icon" href="~/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="~/apple-touch-icon.png" />
+    <meta name="theme-color" content="#090d16" />
 </head>
 <body>
     <header>
@@ -35,14 +107,11 @@
                         </li>
                     </ul>
                     <div class="d-flex align-items-center gap-2">
-                        <button type="button" class="btn btn-primary-gradient btn-sm px-3 py-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#writeReviewModal">
+                        <a asp-controller="Books" asp-action="Create" class="btn btn-primary-gradient btn-sm px-3 py-2 shadow-sm fw-semibold">
                             <i class="bi bi-pencil-square me-1"></i> 독서록 쓰기
-                        </button>
+                        </a>
                         <button type="button" class="btn btn-glass btn-sm px-3 py-2" data-bs-toggle="modal" data-bs-target="#searchModal">
                             <i class="bi bi-search me-1"></i> 도서 검색
-                        </button>
-                        <button type="button" class="btn btn-outline-light btn-sm px-3 py-2" id="btnExportReadmeHeader">
-                            <i class="bi bi-markdown me-1"></i> 내보내기
                         </button>
 
                         <!-- Kakao Login / User Profile -->
@@ -57,16 +126,23 @@
                                     }
                                     else
                                     {
-                                        <div class="rounded-circle bg-warning text-dark d-flex align-items-center justify-content-center fw-bold" style="width: 28px; height: 28px; font-size: 0.75rem;">
+                                        <div class="rounded-circle text-white d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 28px; height: 28px; font-size: 0.75rem; background: linear-gradient(135deg, #7c3aed, #9333ea);">
                                             @(User.Identity.Name?[..1] ?? "K")
                                         </div>
                                     }
                                     <span class="text-white small fw-semibold d-none d-sm-inline">@User.Identity.Name</span>
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-4 mt-2 p-2">
+                                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-4 mt-2 p-2" style="border: 1px solid #ede9fe !important;">
                                     <li class="px-3 py-2">
                                         <span class="d-block fw-bold text-dark small">@User.Identity.Name</span>
-                                        <span class="d-block text-muted" style="font-size: 0.75rem;"><i class="bi bi-chat-fill text-warning me-1"></i>카카오 계정 연동됨</span>
+                                        @{
+                                            var userEmail = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(userEmail))
+                                        {
+                                            <span class="d-block text-muted small" style="font-size: 0.78rem;"><i class="bi bi-envelope me-1"></i>@userEmail</span>
+                                        }
+                                        <span class="badge mt-1" style="font-size: 0.7rem; background-color: #f5f3ff; color: #7c3aed; border: 1px solid #ddd6fe;"><i class="bi bi-check-circle-fill me-1"></i>카카오 연동됨</span>
                                     </li>
                                     <li><hr class="dropdown-divider my-1"></li>
                                     <li>
@@ -118,143 +194,7 @@
         </main>
     </div>
 
-    <!-- 1. Write Book Review Modal (Ultra Easy Reading Log) -->
-    <div class="modal fade" id="writeReviewModal" tabindex="-1" aria-labelledby="writeReviewModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
-                <div class="modal-header border-bottom pb-3">
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="badge bg-primary-subtle text-primary p-2 rounded-3">
-                            <i class="bi bi-pencil-square fs-5"></i>
-                        </span>
-                        <div>
-                            <h5 class="modal-title fw-bold mb-0 text-dark" id="writeReviewModalLabel">새 독서록 작성하기</h5>
-                            <span class="text-muted small">읽은 책을 검색하고, 마음에 남은 생각과 문장을 편하게 기록해 보세요.</span>
-                        </div>
-                    </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body p-4">
-                    <!-- Step 1: Book Selection -->
-                    <div class="mb-4" id="sectionBookSearch">
-                        <label class="form-label fw-bold small text-dark d-flex align-items-center gap-1">
-                            <span class="badge bg-primary rounded-circle px-2 py-1 small">1</span> 어떤 책을 읽으셨나요? (카카오 도서 검색)
-                        </label>
-                        <div class="input-group mb-2">
-                            <input type="text" id="inputReviewBookSearch" class="form-control" 
-                                   placeholder="책 제목 또는 저자명을 입력하세요 (예: 소크라테스 익스프레스)" />
-                            <button class="btn btn-primary px-3" id="btnExecuteReviewSearch" type="button">
-                                <i class="bi bi-search me-1"></i> 검색
-                            </button>
-                        </div>
-                        <div id="reviewSearchLoading" class="text-center py-3 d-none">
-                            <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
-                            <span class="text-muted small ms-2">도서를 찾고 있습니다...</span>
-                        </div>
-                        <!-- Compact Search Results List -->
-                        <div id="reviewSearchResultsList" class="d-flex flex-column gap-2" style="max-height: 200px; overflow-y: auto;"></div>
-                    </div>
-
-                    <!-- Selected Book Card (Hidden initially) -->
-                    <div id="selectedBookCard" class="d-none mb-4 p-3 bg-light rounded-4 border border-primary-subtle position-relative">
-                        <div class="d-flex gap-3 align-items-center">
-                            <img id="selectedBookCover" src="" alt="표지" class="rounded shadow-sm" style="width: 50px; height: 70px; object-fit: cover;" />
-                            <div class="flex-grow-1 min-w-0">
-                                <span class="badge bg-primary-subtle text-primary small mb-1">선택된 도서</span>
-                                <h6 class="fw-bold mb-0 text-truncate text-dark" id="selectedBookTitle"></h6>
-                                <p class="text-muted small mb-0 text-truncate" id="selectedBookMeta"></p>
-                            </div>
-                            <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill" id="btnChangeSelectedBook">
-                                다른 책 선택
-                            </button>
-                        </div>
-                        <!-- Hidden inputs for book data -->
-                        <input type="hidden" id="hiddenIsbn" value="" />
-                        <input type="hidden" id="hiddenTitle" value="" />
-                        <input type="hidden" id="hiddenAuthor" value="" />
-                        <input type="hidden" id="hiddenPublisher" value="" />
-                        <input type="hidden" id="hiddenCoverUrl" value="" />
-                        <input type="hidden" id="hiddenDesc" value="" />
-                    </div>
-
-                    @if (User.Identity?.IsAuthenticated != true)
-                    {
-                        <div class="alert alert-warning border-0 py-2 px-3 rounded-3 small d-flex justify-content-between align-items-center mb-3" style="background-color: #fff9db; color: #856404;">
-                            <span><i class="bi bi-chat-fill text-warning me-1"></i> 카카오 로그인 시 내 닉네임과 프로필로 편리하게 기록됩니다.</span>
-                            <a asp-controller="Auth" asp-action="Login" class="btn btn-kakao btn-sm py-1 px-3 fw-bold" style="font-size: 0.75rem;">로그인</a>
-                        </div>
-                    }
-
-                    <!-- Step 2: Reviewer Name & Star Rating -->
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label for="inputReviewer" class="form-label fw-bold small text-dark d-flex align-items-center gap-1">
-                                <span class="badge bg-primary rounded-circle px-2 py-1 small">2</span> 작성자 닉네임
-                                @if (User.Identity?.IsAuthenticated == true)
-                                {
-                                    <span class="badge bg-warning text-dark small ms-1"><i class="bi bi-chat-fill me-1"></i>카카오 연동</span>
-                                }
-                            </label>
-                            <input type="text" class="form-control rounded-3" id="inputReviewer" value="@(User.Identity?.IsAuthenticated == true ? User.Identity.Name : "익명의 독서가")" maxlength="30" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold small text-dark d-flex align-items-center gap-1">
-                                <span class="badge bg-primary rounded-circle px-2 py-1 small">3</span> 별점 주기
-                            </label>
-                            <div class="d-flex align-items-center gap-2 pt-1">
-                                <div id="starRatingSelector" class="star-rating-picker fs-4 text-warning" style="cursor: pointer;">
-                                    <i class="bi bi-star-fill star-pick active" data-value="1"></i>
-                                    <i class="bi bi-star-fill star-pick active" data-value="2"></i>
-                                    <i class="bi bi-star-fill star-pick active" data-value="3"></i>
-                                    <i class="bi bi-star-fill star-pick active" data-value="4"></i>
-                                    <i class="bi bi-star-fill star-pick active" data-value="5"></i>
-                                </div>
-                                <span class="fw-bold text-dark ms-2 small" id="lblRatingDescription">5.0점 (최고예요!)</span>
-                                <input type="hidden" id="inputReviewRating" value="5" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Step 3: Memorable Quote -->
-                    <div class="mb-3">
-                        <label for="inputReviewQuote" class="form-label fw-bold small text-dark d-flex align-items-center gap-1">
-                            <span class="badge bg-primary rounded-circle px-2 py-1 small">4</span> 인상 깊은 한 문장 <span class="text-muted fw-normal">(선택)</span>
-                        </label>
-                        <textarea class="form-control rounded-3" id="inputReviewQuote" rows="2" 
-                                  placeholder="책을 읽으며 밑줄 긋고 싶었던 문장이 있다면 적어보세요..."></textarea>
-                    </div>
-
-                    <!-- Step 4: Summary / Title -->
-                    <div class="mb-3">
-                        <label for="inputReviewSummary" class="form-label fw-bold small text-dark d-flex align-items-center gap-1">
-                            <span class="badge bg-primary rounded-circle px-2 py-1 small">5</span> 한 줄 평 / 독서록 제목 <span class="text-muted fw-normal">(선택)</span>
-                        </label>
-                        <input type="text" class="form-control rounded-3" id="inputReviewSummary" 
-                               placeholder="예: 삶의 태도를 유쾌하게 풀어낸 최고의 인생 책" maxlength="150" />
-                    </div>
-
-                    <!-- Step 5: Full Review Body -->
-                    <div class="mb-3">
-                        <label for="inputReviewContent" class="form-label fw-bold small text-dark d-flex align-items-center gap-1">
-                            <span class="badge bg-primary rounded-circle px-2 py-1 small">6</span> 독서 감상평 <span class="text-danger">*</span>
-                        </label>
-                        <textarea class="form-control rounded-3" id="inputReviewContent" rows="5" 
-                                  placeholder="책을 읽고 어떤 생각이 들었나요? 줄거리나 느낀 점을 자유롭게 적어보세요." required></textarea>
-                    </div>
-                </div>
-
-                <div class="modal-footer bg-light border-0 py-3 px-4 rounded-bottom-4">
-                    <span class="text-muted small me-auto"><i class="bi bi-check-circle-fill text-success me-1"></i>작성한 독서록은 모두의 피드에 공유됩니다.</span>
-                    <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">취소</button>
-                    <button type="button" class="btn btn-primary-gradient rounded-pill px-4" id="btnSubmitReview">
-                        <i class="bi bi-pencil-square me-1"></i> 독서록 등록하기
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 2. Global Book Search Modal (SaaS UI) -->
+    <!-- Global Book Search Modal (SaaS UI) -->
     <div class="modal fade" id="searchModal" tabindex="-1" aria-labelledby="searchModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
@@ -302,39 +242,6 @@
                 <div class="modal-footer bg-light border-0 py-3 px-4">
                     <span class="text-muted small me-auto"><i class="bi bi-lightning-charge-fill text-warning me-1"></i>카카오 Open API로 도서 정보를 실시간 제공합니다.</span>
                     <button type="button" class="btn btn-outline-secondary btn-sm px-3 rounded-pill" data-bs-dismiss="modal">닫기</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 3. Export README Modal -->
-    <div class="modal fade" id="exportReadmeModal" tabindex="-1" aria-labelledby="exportReadmeModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header bg-dark text-white">
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="badge bg-secondary p-2 rounded-3"><i class="bi bi-markdown fs-5"></i></span>
-                        <div>
-                            <h5 class="modal-title fw-bold mb-0 text-white" id="exportReadmeModalLabel">독서록 마크다운 내보내기</h5>
-                            <span class="text-white-50 small">내 독서 기록 및 추천 도서 마크다운</span>
-                        </div>
-                    </div>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-muted small mb-3">
-                        내 서재에 작성된 독서록과 감명 깊은 문장이 담긴 마크다운 코드입니다.
-                        복사하여 개인 블로그나 GitHub README 등에 활용해 보세요!
-                    </p>
-                    <div class="position-relative">
-                        <textarea id="txtReadmeContent" class="form-control font-monospace small bg-light p-3" rows="13" readonly style="border-radius: 12px;"></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer border-0 bg-light py-3 px-4">
-                    <button type="button" class="btn btn-success rounded-pill px-4" id="btnCopyReadmeMarkdown">
-                        <i class="bi bi-clipboard-check me-1"></i> 마크다운 클립보드 복사
-                    </button>
-                    <button type="button" class="btn btn-secondary rounded-pill px-3" data-bs-dismiss="modal">닫기</button>
                 </div>
             </div>
         </div>

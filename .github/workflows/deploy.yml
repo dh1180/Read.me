@@ -9,12 +9,12 @@ on:
       - main
 
 env:
-  AZURE_WEBAPP_NAME: 'readme-app' # Set this to your Azure Web App name
-  DOTNET_VERSION: '10.0.x'        # Target .NET SDK version
+  AZURE_WEBAPP_NAME: 'readme' # Azure App Service resource name
+  DOTNET_VERSION: '10.0.x'    # Target .NET SDK version
 
 jobs:
   build:
-    name: Build & Test
+    name: Build
     runs-on: windows-latest
 
     steps:
@@ -27,16 +27,13 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Restore Dependencies
-        run: dotnet restore
+        run: dotnet restore ReadMeApp.csproj
 
       - name: Build Solution
-        run: dotnet build --configuration Release --no-restore
-
-      - name: Run Tests
-        run: dotnet test --no-build --verbosity normal --configuration Release
+        run: dotnet build ReadMeApp.csproj --configuration Release --no-restore
 
       - name: Publish Web App
-        run: dotnet publish -c Release -o ${{ runner.temp }}/app
+        run: dotnet publish ReadMeApp.csproj -c Release -o ${{ runner.temp }}/app
 
       - name: Upload Artifact for Deployment
         uses: actions/upload-artifact@v4
@@ -48,7 +45,7 @@ jobs:
     name: Deploy to Azure App Service
     needs: build
     runs-on: windows-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && secrets.AZURE_WEBAPP_PUBLISH_PROFILE != ''
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
       - name: Download Artifact

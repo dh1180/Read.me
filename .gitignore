@@ -30,3 +30,6 @@
 
 # Environment Secrets
 appsettings.Production.json
+appsettings.Development.json
+*.PublishSettings
+

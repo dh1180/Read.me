@@ -4,30 +4,25 @@
     var currentSort = Model.CurrentSort ?? "latest";
 }
 
-<!-- Warm Community Hero Banner -->
-<div class="hero-banner p-4 p-md-5 mb-4 text-white">
+<!-- Clean Modern Black & Purple Hero Banner -->
+<div class="hero-banner p-4 p-md-5 mb-4 text-white rounded-4 shadow-sm">
     <div class="col-lg-8 position-relative" style="z-index: 2;">
-        <div class="d-flex align-items-center gap-2 mb-3">
-            <span class="hero-pill px-3 py-1">
-                <i class="bi bi-book-half me-1 text-warning"></i> 모두의 독서록 (Read.me)
-            </span>
-            <span class="badge bg-white bg-opacity-10 text-light rounded-pill px-3 py-1 fw-normal">열린 독서 커뮤니티</span>
+        <div class="d-inline-flex align-items-center gap-2 mb-3 px-3 py-1 rounded-pill hero-pill small">
+            <i class="bi bi-book-half" style="color: #c4b5fd;"></i>
+            <span class="text-white fw-medium">열린 독서 커뮤니티 · Read.me</span>
         </div>
-        <h1 class="display-6 fw-bold mb-3 tracking-tight">우리가 읽고 나눈 이야기</h1>
-        <p class="lead text-light text-opacity-75 mb-4 fs-6" style="max-width: 620px;">
-            사람들이 책을 읽고 남긴 솔직한 독서록과 마음에 남은 한 문장을 만나보세요. 
-            진행률 계산의 번거로움 없이, 읽고 느낀 생각을 가장 편하게 기록할 수 있습니다.
+        <h1 class="display-6 fw-bold mb-3 tracking-tight text-white">우리가 읽고 나눈 이야기</h1>
+        <p class="lead text-light text-opacity-75 mb-4 fs-6" style="max-width: 580px; line-height: 1.7;">
+            책을 읽고 마음속에 남은 솔직한 생각과 밑줄 친 문장을 편하게 기록하고 나눠보세요.
+            템플릿을 활용해 누구나 1분 만에 완성도 높은 독서록을 작성할 수 있습니다.
         </p>
-        <div class="d-flex flex-wrap gap-3">
-            <button type="button" class="btn btn-primary-gradient px-4 py-2" data-bs-toggle="modal" data-bs-target="#writeReviewModal">
+        <div class="d-flex flex-wrap gap-2">
+            <a asp-controller="Books" asp-action="Create" class="btn btn-primary-gradient px-4 py-2 rounded-pill shadow-sm fw-semibold">
                 <i class="bi bi-pencil-square me-1"></i> 독서록 작성하기
-            </button>
-            <a asp-controller="Books" asp-action="Index" class="btn btn-glass px-4 py-2">
+            </a>
+            <a asp-controller="Books" asp-action="Index" class="btn btn-glass px-4 py-2 rounded-pill">
                 <i class="bi bi-collection me-1"></i> 서재 둘러보기
             </a>
-            <button type="button" class="btn btn-glass px-4 py-2" id="btnExportReadmeHero">
-                <i class="bi bi-markdown-fill me-1 text-warning"></i> 독서록 내보내기
-            </button>
         </div>
     </div>
 </div>
@@ -38,21 +33,21 @@
     <div class="d-flex align-items-center gap-2 flex-wrap">
         <span class="text-muted small fw-semibold me-1"><i class="bi bi-filter"></i> 정렬:</span>
         <a asp-action="Index" asp-route-sort="latest" asp-route-query="@Model.SearchQuery" 
-           class="btn btn-sm rounded-pill px-3 @(currentSort == "latest" ? "btn-primary" : "btn-light text-secondary")">
+           class="btn btn-sm rounded-pill px-3 @(currentSort == "latest" ? "btn-primary" : "btn-light text-secondary border")">
             <i class="bi bi-clock-history me-1"></i> 최신순
         </a>
         <a asp-action="Index" asp-route-sort="popular" asp-route-query="@Model.SearchQuery" 
-           class="btn btn-sm rounded-pill px-3 @(currentSort == "popular" ? "btn-primary" : "btn-light text-secondary")">
+           class="btn btn-sm rounded-pill px-3 @(currentSort == "popular" ? "btn-primary" : "btn-light text-secondary border")">
             <i class="bi bi-fire me-1"></i> 인기순
         </a>
         <a asp-action="Index" asp-route-sort="rating" asp-route-query="@Model.SearchQuery" 
-           class="btn btn-sm rounded-pill px-3 @(currentSort == "rating" ? "btn-primary" : "btn-light text-secondary")">
-            <i class="bi bi-star-fill text-warning me-1"></i> 별점순
+           class="btn btn-sm rounded-pill px-3 @(currentSort == "rating" ? "btn-primary" : "btn-light text-secondary border")">
+            <i class="bi bi-star-fill me-1"></i> 별점순
         </a>
     </div>
 
     <!-- Search Form -->
-    <form asp-action="Index" method="get" class="d-flex gap-2" style="max-width: 360px;">
+    <form asp-action="Index" method="get" class="d-flex gap-2" style="max-width: 340px;">
         <input type="hidden" name="sort" value="@currentSort" />
         <div class="input-group input-group-sm">
             <input type="text" name="query" class="form-control rounded-start-pill ps-3" 
@@ -73,16 +68,20 @@
 <!-- Community Book Reviews Feed -->
 @if (Model.Reviews.Count == 0)
 {
-    <div class="card border-0 shadow-sm text-center py-5">
-        <div class="card-body">
-            <i class="bi bi-journal-x text-muted opacity-50" style="font-size: 3.5rem;"></i>
-            <h5 class="fw-bold mt-3 text-secondary">
+    <div class="card border-0 shadow-sm text-center py-5 rounded-4" style="background: #ffffff; border: 1px solid #edf0f5 !important;">
+        <div class="card-body py-5">
+            <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 68px; height: 68px; background: #f5f3ff; border: 1px solid #ede9fe;">
+                <i class="bi bi-journal-plus fs-2" style="color: #7c3aed;"></i>
+            </div>
+            <h5 class="fw-bold text-dark mb-2">
                 @(string.IsNullOrWhiteSpace(Model.SearchQuery) ? "작성된 독서록이 아직 없습니다" : $"'{Model.SearchQuery}'에 대한 검색 결과가 없습니다")
             </h5>
-            <p class="text-muted small mb-3">책을 읽고 느낀 생각을 첫 번째 독서록으로 남겨보세요!</p>
-            <button type="button" class="btn btn-primary-gradient px-4 py-2" data-bs-toggle="modal" data-bs-target="#writeReviewModal">
-                <i class="bi bi-pencil-square me-1"></i> 독서록 작성하기
-            </button>
+            <p class="text-muted small mb-4" style="max-width: 420px; margin: 0 auto;">
+                내가 읽은 책의 소중한 생각과 밑줄 친 문장을 첫 번째로 기록하고 사람들과 공유해 보세요.
+            </p>
+            <a asp-controller="Books" asp-action="Create" class="btn btn-primary-gradient px-4 py-2 rounded-pill fw-semibold shadow-sm">
+                <i class="bi bi-pencil-square me-1"></i> 첫 독서록 작성하기
+            </a>
         </div>
     </div>
 }
@@ -92,97 +91,86 @@ else
         @foreach (var review in Model.Reviews)
         {
             <div class="col" id="review-card-@review.Id">
-                <div class="card h-100 border-0 shadow-sm hover-shadow transition p-4 d-flex flex-column" style="border-radius: 16px;">
-                    <!-- Review Header: Reviewer Info + Rating -->
+                <div class="card h-100 border-0 shadow-sm hover-shadow transition p-4 d-flex flex-column rounded-4" style="background: #ffffff; border: 1px solid #edf0f5 !important;">
+                    <!-- 1. Header: Reviewer & Rating -->
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div class="d-flex align-items-center gap-2">
-                            <div class="rounded-circle bg-light text-primary d-flex align-items-center justify-content-center border" style="width: 38px; height: 38px;">
-                                <i class="bi bi-person-fill fs-5"></i>
+                            <div class="rounded-circle d-flex align-items-center justify-content-center border" style="width: 36px; height: 36px; font-weight: 600; background: #f5f3ff; color: #7c3aed; border-color: #ede9fe !important;">
+                                @(string.IsNullOrEmpty(review.ReviewerName) ? "독" : review.ReviewerName[..1])
                             </div>
                             <div>
-                                <h6 class="fw-bold mb-0 text-dark" style="font-size: 0.95rem;">@review.ReviewerName</h6>
-                                <span class="text-muted small" style="font-size: 0.78rem;">
-                                    <i class="bi bi-calendar3 me-1"></i>@review.ReadDate.ToString("yyyy.MM.dd") 완독
-                                </span>
+                                <div class="fw-bold text-dark small">@review.ReviewerName</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">
+                                    @review.ReadDate.ToString("yyyy.MM.dd") 완독
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Star Rating -->
-                        <div class="d-flex align-items-center gap-1">
-                            @for (int i = 1; i <= 5; i++)
-                            {
-                                if (i <= review.Rating)
-                                {
-                                    <i class="bi bi-star-fill text-warning" style="font-size: 0.95rem;"></i>
-                                }
-                                else
-                                {
-                                    <i class="bi bi-star text-black-50 opacity-25" style="font-size: 0.95rem;"></i>
-                                }
-                            }
-                            <span class="badge bg-warning-subtle text-dark fw-bold ms-1" style="font-size: 0.75rem;">@review.Rating.0</span>
+                        <!-- Star Rating Badge -->
+                        <div class="d-flex align-items-center gap-1 px-2 py-1 rounded-pill" style="background: #f5f3ff; color: #7c3aed;">
+                            <i class="bi bi-star-fill small" style="color: #7c3aed;"></i>
+                            <span class="fw-bold small" style="font-size: 0.78rem;">@review.Rating.0</span>
                         </div>
                     </div>
 
-                    <!-- Book Mini Info Box -->
-                    <div class="d-flex gap-3 align-items-center p-3 mb-3 bg-light rounded-3 border border-light">
-                        <div class="flex-shrink-0 text-center" style="width: 58px;">
+                    <!-- 2. Clean Book Row -->
+                    <div class="d-flex gap-3 align-items-center p-2 mb-3 rounded-3 bg-light bg-opacity-50 border border-light">
+                        <div class="flex-shrink-0" style="width: 46px; height: 64px;">
                             @if (!string.IsNullOrWhiteSpace(review.Book?.CoverImageUrl))
                             {
-                                <img src="@review.Book.CoverImageUrl" alt="@review.Book.Title" class="shelf-book-cover img-fluid rounded" style="max-height: 80px; object-fit: cover;" />
+                                <img src="@review.Book.CoverImageUrl" alt="@review.Book.Title" 
+                                     class="img-fluid rounded shadow-sm w-100 h-100" style="object-fit: cover;"
+                                     onerror="this.onerror=null; this.src='https://via.placeholder.com/46x64?text=Book';" />
                             }
                             else
                             {
-                                <div class="bg-secondary bg-opacity-25 rounded d-flex align-items-center justify-content-center" style="height: 80px;">
-                                    <i class="bi bi-book text-muted"></i>
+                                <div class="bg-secondary bg-opacity-25 rounded d-flex align-items-center justify-content-center w-100 h-100 text-muted">
+                                    <i class="bi bi-book"></i>
                                 </div>
                             }
                         </div>
                         <div class="flex-grow-1 min-w-0">
-                            <h6 class="fw-bold mb-1 text-truncate text-dark" title="@review.Book?.Title">
-                                <a asp-controller="Books" asp-action="Details" asp-route-id="@review.Id" class="text-decoration-none text-dark">
-                                    @review.Book?.Title
+                            <h6 class="fw-bold mb-1 text-truncate text-dark" style="font-size: 0.95rem;">
+                                <a asp-controller="Books" asp-action="Details" asp-route-id="@review.Id" class="text-decoration-none text-dark hover-primary">
+                                    @(review.Book?.Title ?? "도서 정보 없음")
                                 </a>
                             </h6>
-                            <p class="text-muted small mb-0 text-truncate">
-                                @(review.Book?.Author ?? "저자 미상") · @(review.Book?.Publisher ?? "")
-                            </p>
+                            <div class="text-muted small text-truncate" style="font-size: 0.78rem;">
+                                @(review.Book?.Author ?? "저자 미상") @(!string.IsNullOrWhiteSpace(review.Book?.Publisher) ? "· " + review.Book.Publisher : "")
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Memorable Quote Box (if exists) -->
+                    <!-- 3. Memorable Quote (clean minimal purple accent line) -->
                     @if (!string.IsNullOrWhiteSpace(review.Quote))
                     {
-                        <div class="quote-callout mb-3 p-3 rounded-3 position-relative" style="background: #fafafa; border-left: 4px solid var(--primary);">
-                            <i class="bi bi-quote text-primary opacity-50 fs-4 position-absolute" style="top: -6px; left: 6px;"></i>
-                            <p class="mb-0 small fst-italic text-secondary ps-3" style="line-height: 1.6;">
-                                "@review.Quote"
-                            </p>
+                        <div class="ps-3 py-1 my-2 border-start border-3 fst-italic text-secondary small" style="border-color: #7c3aed !important; line-height: 1.6;">
+                            "@review.Quote"
                         </div>
                     }
 
-                    <!-- Summary & Review Content -->
+                    <!-- 4. Review Title & Content -->
                     <div class="mb-3 flex-grow-1">
                         @if (!string.IsNullOrWhiteSpace(review.Summary))
                         {
-                            <h6 class="fw-bold text-dark mb-2" style="font-size: 1rem; line-height: 1.4;">
+                            <h6 class="fw-bold text-dark mb-2" style="font-size: 1.05rem; line-height: 1.4;">
                                 @review.Summary
                             </h6>
                         }
-                        <p class="text-secondary small mb-0" style="white-space: pre-line; line-height: 1.7; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;">
+                        <p class="text-secondary small mb-0" style="white-space: pre-line; line-height: 1.7; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
                             @review.Content
                         </p>
                     </div>
 
-                    <!-- Card Footer: Likes & Detail Link -->
+                    <!-- 5. Footer: Likes & Detail Link -->
                     <div class="d-flex justify-content-between align-items-center pt-3 border-top mt-auto">
-                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 btn-like-review" data-id="@review.Id">
-                            <i class="bi bi-heart-fill me-1"></i>
-                            좋아요 <strong class="like-count" id="like-count-@review.Id">@review.LikesCount</strong>
+                        <button type="button" class="btn btn-sm btn-light rounded-pill px-3 text-secondary btn-like-review" data-id="@review.Id">
+                            <i class="bi bi-heart text-danger me-1"></i>
+                            <span class="like-count" id="like-count-@review.Id">@review.LikesCount</span>
                         </button>
 
-                        <a asp-controller="Books" asp-action="Details" asp-route-id="@review.Id" class="btn btn-light btn-sm text-secondary rounded-pill px-3">
-                            독서록 전문 보기 <i class="bi bi-chevron-right small"></i>
+                        <a asp-controller="Books" asp-action="Details" asp-route-id="@review.Id" class="text-decoration-none small fw-semibold d-inline-flex align-items-center gap-1" style="color: #7c3aed;">
+                            독서록 읽기 <i class="bi bi-arrow-right"></i>
                         </a>
                     </div>
                 </div>
@@ -190,4 +178,3 @@ else
         }
     </div>
 }
-

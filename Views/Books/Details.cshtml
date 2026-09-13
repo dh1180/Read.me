@@ -1,16 +1,64 @@
 @model ReadMeApp.Models.UserBook
 @using ReadMeApp.Models
 @{
-    ViewData["Title"] = Model.Book?.Title ?? "독서록 상세";
+    var bookTitle = Model.Book?.Title ?? "도서 독서록";
+    var bookAuthor = Model.Book?.Author ?? "저자 미상";
+    var reviewer = string.IsNullOrWhiteSpace(Model.ReviewerName) ? "독서가" : Model.ReviewerName;
+    ViewData["Title"] = $"{bookTitle} ({bookAuthor}) - {reviewer}님의 독서록";
+    
+    var desc = !string.IsNullOrWhiteSpace(Model.Summary)
+        ? $"{bookTitle}({bookAuthor}) 독서록: {Model.Summary}"
+        : (!string.IsNullOrWhiteSpace(Model.Quote)
+            ? $"\"{Model.Quote}\" - {bookTitle} 독서록 ({reviewer})"
+            : $"{reviewer}님이 기록한 '{bookTitle}' 도서 감상평과 서평입니다.");
+    
+    ViewData["MetaDescription"] = desc;
+    ViewData["OgTitle"] = $"{bookTitle} - {reviewer}님의 독서록 | Read.me";
+    ViewData["OgDescription"] = desc;
+    ViewData["OgType"] = "article";
+    if (!string.IsNullOrWhiteSpace(Model.Book?.CoverImageUrl))
+    {
+        ViewData["OgImage"] = Model.Book.CoverImageUrl;
+    }
 }
+
+<!-- Schema.org Book & Review Rich Snippet -->
+<script type="application/ld+json">
+{
+  "@@context": "https://schema.org",
+  "@@type": "Review",
+  "name": "@Html.Raw(bookTitle.Replace("\"", "\\\"")) 독서록",
+  "reviewBody": "@Html.Raw((Model.Content ?? "").Replace("\"", "\\\"").Replace("\r", "").Replace("\n", " "))",
+  "reviewRating": {
+    "@@type": "Rating",
+    "ratingValue": "@Model.Rating",
+    "bestRating": "5",
+    "worstRating": "1"
+  },
+  "author": {
+    "@@type": "Person",
+    "name": "@Html.Raw(reviewer.Replace("\"", "\\\""))"
+  },
+  "itemReviewed": {
+    "@@type": "Book",
+    "name": "@Html.Raw(bookTitle.Replace("\"", "\\\""))",
+    "author": {
+      "@@type": "Person",
+      "name": "@Html.Raw(bookAuthor.Replace("\"", "\\\""))"
+    },
+    "isbn": "@Model.Book?.Isbn",
+    "image": "@Model.Book?.CoverImageUrl"
+  }
+}
+</script>
 
 <div class="mb-4 d-flex justify-content-between align-items-center">
     <a asp-action="Index" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
         <i class="bi bi-arrow-left me-1"></i> 서재 목록으로
     </a>
-    <button type="button" class="btn btn-primary-gradient btn-sm px-3 rounded-pill" data-bs-toggle="modal" data-bs-target="#writeReviewModal">
+    <a asp-controller="Books" asp-action="Create" class="btn btn-primary-gradient btn-sm px-3 rounded-pill">
         <i class="bi bi-pencil-square me-1"></i> 새 독서록 작성
-    </button>
+    </a>
 </div>
 
 <!-- Book Header Card -->
@@ -108,13 +156,14 @@
             </div>
         }
 
-        <!-- Full Review Body -->
-        <div class="review-body p-3 my-3 bg-light rounded-3">
-            <h6 class="fw-bold text-secondary mb-2" style="font-size: 0.85rem;">
-                <i class="bi bi-file-earmark-text me-1"></i> 상세 감상평
+        <!-- Full Review Body (Markdown Rendered) -->
+        <div class="review-body p-4 my-3 bg-light rounded-4">
+            <h6 class="fw-bold text-secondary mb-3 d-flex align-items-center gap-1" style="font-size: 0.85rem;">
+                <i class="bi bi-file-earmark-text text-primary me-1"></i> 상세 감상평
+                <span class="badge bg-primary-subtle text-primary small ms-auto fw-normal" style="font-size: 0.72rem;">Markdown</span>
             </h6>
-            <div class="text-dark fs-6" style="white-space: pre-line; line-height: 1.8;">
-                @Model.Content
+            <div class="markdown-content text-dark fs-6" style="line-height: 1.8;">
+                @Html.Raw(Model.ContentHtml)
             </div>
         </div>
 

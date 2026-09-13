@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
@@ -132,12 +132,14 @@ public class AuthController : Controller
     {
         var isAuthenticated = User.Identity?.IsAuthenticated == true;
         var name = User.Identity?.Name ?? string.Empty;
+        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? string.Empty;
         var avatar = User.FindFirst("ThumbnailImage")?.Value ?? User.FindFirst("ProfileImage")?.Value ?? string.Empty;
 
         return Json(ApiResponse<object>.Ok(new
         {
             isAuthenticated,
             name,
+            email,
             profileImage = avatar
         }));
     }

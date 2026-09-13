@@ -22,13 +22,20 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 
 // Database Configuration (Supports MS SQL Server & SQLite fallback)
 var provider = builder.Configuration["DatabaseProvider"] ?? "Sqlite";
-var sqlServerConn = builder.Configuration.GetConnectionString("DefaultConnection");
+var sqlServerConn = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? Environment.GetEnvironmentVariable("SQLCONNSTR_DefaultConnection")
+    ?? Environment.GetEnvironmentVariable("SQLAZURECONNSTR_DefaultConnection")
+    ?? Environment.GetEnvironmentVariable("CUSTOMCONNSTR_DefaultConnection");
 var sqliteConn = builder.Configuration.GetConnectionString("SqliteConnection") ?? "Data Source=readme.db";
 
 // Primary DB Context registration
 builder.Services.AddDbContext<ReadmeDbContext>(options =>
 {
-    if (provider.Equals("SqlServer", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(sqlServerConn))
+    var isSqlServer = provider.Equals("SqlServer", StringComparison.OrdinalIgnoreCase) && 
+                      !string.IsNullOrWhiteSpace(sqlServerConn) &&
+                      (builder.Environment.IsDevelopment() || !sqlServerConn.Contains("(localdb)", StringComparison.OrdinalIgnoreCase));
+
+    if (isSqlServer)
     {
         options.UseSqlServer(sqlServerConn);
     }
@@ -53,24 +60,24 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = services.GetRequiredService<ReadmeDbContext>();
-        try
+        context.Database.EnsureCreated();
+        
+        // 기존 더미 데이터 정리
+        var dummyReviewers = new[] { "지혜로운산책자", "따뜻한라떼", "새벽네시", "기록하는개발자" };
+        var dummyReviews = context.UserBooks.Where(ub => dummyReviewers.Contains(ub.ReviewerName)).ToList();
+        if (dummyReviews.Any())
         {
-            // Test if schema matches current UserBook model
-            _ = context.UserBooks.FirstOrDefault();
-        }
-        catch
-        {
-            logger.LogWarning("기존 데이터베이스 스키마가 변경되어 최신 모델로 재생성합니다.");
-            context.Database.EnsureDeleted();
+            context.UserBooks.RemoveRange(dummyReviews);
+            context.SaveChanges();
+            logger.LogInformation("기존 더미 독서록 {Count}건 삭제 완료.", dummyReviews.Count);
         }
 
-        context.Database.EnsureCreated();
         ReadmeDbContext.SeedSampleData(context);
-        logger.LogInformation("데이터베이스 초기화 및 샘플 시드 데이터 준비 완료.");
+        logger.LogInformation("데이터베이스 초기화 준비 완료.");
     }
     catch (SqlException ex)
     {
-        logger.LogWarning("MS SQL Server 연결 실패({Message}). 로컬 SQLite로 대체 시도를 권장합니다.", ex.Message);
+        logger.LogWarning("MS SQL Server 연결 실패({Message}).", ex.Message);
     }
     catch (Exception ex)
     {

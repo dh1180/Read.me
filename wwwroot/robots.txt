@@ -1,0 +1,6 @@
+﻿User-agent: *
+Allow: /
+Disallow: /Auth/
+Disallow: /Search/AddToLibrary
+
+Sitemap: https://readme-f7c0beg0gkafe9cp.koreacentral-01.azurewebsites.net/sitemap.xml

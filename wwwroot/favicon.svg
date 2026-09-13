@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#090d16"/>
+      <stop offset="55%" stop-color="#151028"/>
+      <stop offset="100%" stop-color="#231242"/>
+    </linearGradient>
+    <linearGradient id="pageRightGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#6d28d9"/>
+    </linearGradient>
+    <linearGradient id="ribbonGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#f472b6"/>
+      <stop offset="100%" stop-color="#ec4899"/>
+    </linearGradient>
+    <filter id="bookShadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a78bfa" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#6d28d9" stop-opacity="0.4"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background Squircle -->
+  <rect x="24" y="24" width="464" height="464" rx="112" fill="url(#bgGrad)"/>
+  <rect x="24" y="24" width="464" height="464" rx="112" stroke="url(#borderGrad)" stroke-width="5"/>
+
+  <!-- Book Container with Shadow -->
+  <g filter="url(#bookShadow)">
+    <polygon points="256,410 116,394 116,380 256,396" fill="#a78bfa" fill-opacity="0.85"/>
+    <polygon points="256,410 396,394 396,380 256,396" fill="#5b21b6"/>
+    <polygon points="256,211 116,179 116,380 256,396" fill="#f8f7ff"/>
+    <polygon points="256,211 396,179 396,380 256,396" fill="url(#pageRightGrad)"/>
+    <line x1="256" y1="211" x2="256" y2="410" stroke="#3b0764" stroke-width="6" stroke-linecap="round"/>
+    <rect x="144" y="246" width="76" height="7" rx="3.5" fill="#c4b5fd" fill-opacity="0.9"/>
+    <rect x="144" y="272" width="76" height="7" rx="3.5" fill="#c4b5fd" fill-opacity="0.9"/>
+    <rect x="144" y="298" width="54" height="7" rx="3.5" fill="#c4b5fd" fill-opacity="0.9"/>
+    <polygon points="294,165 320,165 320,270 307,254 294,270" fill="url(#ribbonGrad)"/>
+  </g>
+
+  <!-- Big Sparkle (Top Right) -->
+  <polygon points="405,123 412,144 433,151 412,158 405,179 398,158 377,151 398,144" fill="#ffffff"/>
+  <!-- Small Sparkle (Top Left) -->
+  <polygon points="131,162 134,171 143,174 134,177 131,186 128,177 119,174 128,171" fill="#ddd6fe" fill-opacity="0.9"/>
+</svg>

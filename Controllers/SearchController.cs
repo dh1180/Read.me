@@ -22,16 +22,17 @@ public class SearchController : Controller
 
     // GET: /Search/Query?q=... (Ajax)
     [HttpGet]
-    public async Task<IActionResult> Query(string q)
+    public async Task<IActionResult> Query(string? q, string? query)
     {
-        if (string.IsNullOrWhiteSpace(q))
+        var searchTerm = !string.IsNullOrWhiteSpace(q) ? q : query;
+        if (string.IsNullOrWhiteSpace(searchTerm))
         {
             return Json(ApiResponse<List<BookSearchResultDto>>.Ok(new List<BookSearchResultDto>()));
         }
 
         try
         {
-            var results = await _searchService.SearchBooksAsync(q);
+            var results = await _searchService.SearchBooksAsync(searchTerm);
             return Json(ApiResponse<List<BookSearchResultDto>>.Ok(results));
         }
         catch (Exception ex)
@@ -39,6 +40,13 @@ public class SearchController : Controller
             _logger.LogError(ex, "도서 검색 중 오류 발생");
             return Json(ApiResponse<List<BookSearchResultDto>>.Fail("도서 검색 중 오류가 발생했습니다."));
         }
+    }
+
+    // GET: /Search/SearchBooks?query=... (Alias Ajax endpoint)
+    [HttpGet]
+    public Task<IActionResult> SearchBooks(string? query, string? q)
+    {
+        return Query(q, query);
     }
 
     // POST: /Search/AddToLibrary (Ajax)

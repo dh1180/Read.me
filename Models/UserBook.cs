@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using Markdig;
 
 namespace ReadMeApp.Models;
 
@@ -23,6 +25,19 @@ public class UserBook
 
     [MaxLength(4000)]
     public string? Content { get; set; } // 독서록 본문
+
+    [NotMapped]
+    public string ContentHtml
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(Content)) return string.Empty;
+            var pipeline = new MarkdownPipelineBuilder()
+                .UseAdvancedExtensions()
+                .Build();
+            return Markdown.ToHtml(Content, pipeline);
+        }
+    }
 
     public DateTime ReadDate { get; set; } = DateTime.UtcNow;
 

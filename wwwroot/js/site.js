@@ -171,7 +171,7 @@ $(document).ready(function () {
         });
     });
 
-    // Write review directly from Search Modal
+    // Write review directly from Search Modal -> Navigate to /Books/Create page
     $(document).on('click', '.btn-write-review-from-search', function () {
         var index = parseInt($(this).data('index'));
         var book = currentSearchResults[index];
@@ -182,13 +182,14 @@ $(document).ready(function () {
         var searchModal = bootstrap.Modal.getInstance(searchModalEl);
         if (searchModal) searchModal.hide();
 
-        // Select this book for review
-        selectBookForReview(book);
-
-        // Open write review modal
-        var writeReviewModalEl = document.getElementById('writeReviewModal');
-        var writeModal = new bootstrap.Modal(writeReviewModalEl);
-        writeModal.show();
+        // Redirect directly to /Books/Create page with query params
+        var params = new URLSearchParams({
+            isbn: book.isbn || '',
+            title: book.title || '',
+            author: book.author || '',
+            cover: book.coverImageUrl || ''
+        });
+        window.location.href = '/Books/Create?' + params.toString();
     });
 
     // --- 2. Write Review Modal: Book Search & Selection ---
