@@ -1,0 +1,65 @@
+name: Build and Deploy ASP.NET Core MVC App to Azure WebApp
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  AZURE_WEBAPP_NAME: 'readme-app' # Set this to your Azure Web App name
+  DOTNET_VERSION: '10.0.x'        # Target .NET SDK version
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore Dependencies
+        run: dotnet restore
+
+      - name: Build Solution
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Run Tests
+        run: dotnet test --no-build --verbosity normal --configuration Release
+
+      - name: Publish Web App
+        run: dotnet publish -c Release -o ${{ runner.temp }}/app
+
+      - name: Upload Artifact for Deployment
+        uses: actions/upload-artifact@v4
+        with:
+          name: webapp
+          path: ${{ runner.temp }}/app
+
+  deploy:
+    name: Deploy to Azure App Service
+    needs: build
+    runs-on: windows-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: webapp
+          path: ${{ runner.temp }}/app
+
+      - name: Deploy to Azure WebApp
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ${{ runner.temp }}/app

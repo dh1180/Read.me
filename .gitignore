@@ -1,0 +1,32 @@
+## [Visual Studio / .NET]
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio Code / Rider / Visual Studio
+.vs/
+.idea/
+.vscode/
+*.swp
+*.ide
+
+# Database / Local SQLite
+*.db
+*.db-shm
+*.db-wal
+
+# Publishing / Deployment
+/publish/
+*.azurepubxml
+*.pubxml
+
+# Environment Secrets
+appsettings.Production.json
