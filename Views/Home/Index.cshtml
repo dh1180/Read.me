@@ -48,7 +48,7 @@
             <p class="text-muted small mb-0">
                 @if (!string.IsNullOrWhiteSpace(Model.SearchQuery))
                 {
-                    <span>'@Model.SearchQuery' 검색 결과 @Model.FilteredReviewsCount개</span>
+                    <span>'@Model.SearchQuery' 검색 결과 @(Model.FilteredReviewsCount)개</span>
                 }
                 else
                 {
