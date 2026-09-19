@@ -16,7 +16,7 @@
     
     @{
         var pageTitle = ViewData["Title"]?.ToString() ?? "모두의 독서록";
-        var metaDesc = ViewData["MetaDescription"]?.ToString() ?? "읽은 책의 솔직한 생각과 인상 깊은 한 문장을 기록하고 나누는 모던 독서 기록 커뮤니티 Read.me입니다.";
+        var metaDesc = ViewData["MetaDescription"]?.ToString() ?? "읽은 책과 마음에 남은 문장을 기록하고 다른 독자의 이야기를 만나는 독서 기록 커뮤니티 Read.me입니다.";
         var ogTitle = ViewData["OgTitle"]?.ToString() ?? $"{pageTitle} - Read.me";
         var ogDesc = ViewData["OgDescription"]?.ToString() ?? metaDesc;
         var ogType = ViewData["OgType"]?.ToString() ?? "website";
@@ -59,7 +59,7 @@
       "name": "Read.me",
       "alternateName": "모두의 독서록",
       "url": "@($"{Context.Request.Scheme}://{Context.Request.Host}")",
-      "description": "책 속의 문장과 생각을 기록하고 나누는 오픈 독서록 플랫폼",
+      "description": "읽은 책과 마음에 남은 문장을 기록하고 나누는 독서 기록 커뮤니티",
       "potentialAction": {
         "@@type": "SearchAction",
         "target": "@($"{Context.Request.Scheme}://{Context.Request.Host}")/?query={search_term_string}",
@@ -81,6 +81,7 @@
     <meta name="theme-color" content="#090d16" />
 </head>
 <body>
+    <div class="d-none" aria-hidden="true">@Html.AntiForgeryToken()</div>
     <header>
         <nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top py-2">
             <div class="container">
@@ -97,12 +98,12 @@
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3">
                         <li class="nav-item">
                             <a class="nav-link px-3" asp-controller="Home" asp-action="Index">
-                                <i class="bi bi-chat-heart me-1"></i> 모두의 독서록
+                                <i class="bi bi-house-heart me-1"></i> 모두의 독서록
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link px-3" asp-controller="Books" asp-action="Index">
-                                <i class="bi bi-collection me-1"></i> 내 서재
+                                <i class="bi bi-bookmarks me-1"></i> 내 기록
                             </a>
                         </li>
                     </ul>
@@ -111,7 +112,7 @@
                             <i class="bi bi-pencil-square me-1"></i> 독서록 쓰기
                         </a>
                         <button type="button" class="btn btn-glass btn-sm px-3 py-2" data-bs-toggle="modal" data-bs-target="#searchModal">
-                            <i class="bi bi-search me-1"></i> 도서 검색
+                            <i class="bi bi-search me-1"></i> 책 찾기
                         </button>
 
                         <!-- Kakao Login / User Profile -->
@@ -126,13 +127,13 @@
                                     }
                                     else
                                     {
-                                        <div class="rounded-circle text-white d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 28px; height: 28px; font-size: 0.75rem; background: linear-gradient(135deg, #7c3aed, #9333ea);">
+                                        <div class="rounded-circle text-white d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 28px; height: 28px; font-size: 0.75rem; background: linear-gradient(135deg, #496a57, #688774);">
                                             @(User.Identity.Name?[..1] ?? "K")
                                         </div>
                                     }
                                     <span class="text-white small fw-semibold d-none d-sm-inline">@User.Identity.Name</span>
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-4 mt-2 p-2" style="border: 1px solid #ede9fe !important;">
+                                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-4 mt-2 p-2" style="border: 1px solid #dde7df !important;">
                                     <li class="px-3 py-2">
                                         <span class="d-block fw-bold text-dark small">@User.Identity.Name</span>
                                         @{
@@ -142,18 +143,20 @@
                                         {
                                             <span class="d-block text-muted small" style="font-size: 0.78rem;"><i class="bi bi-envelope me-1"></i>@userEmail</span>
                                         }
-                                        <span class="badge mt-1" style="font-size: 0.7rem; background-color: #f5f3ff; color: #7c3aed; border: 1px solid #ddd6fe;"><i class="bi bi-check-circle-fill me-1"></i>카카오 연동됨</span>
+                                        <span class="badge mt-1" style="font-size: 0.7rem; background-color: #eef4ef; color: #496a57; border: 1px solid #d4e1d6;"><i class="bi bi-check-circle-fill me-1"></i>카카오 연동됨</span>
                                     </li>
                                     <li><hr class="dropdown-divider my-1"></li>
                                     <li>
                                         <a class="dropdown-item small rounded-3 d-flex align-items-center gap-2 py-2" asp-controller="Books" asp-action="Index">
-                                            <i class="bi bi-collection text-primary"></i> 내 서재 &amp; 독서록
+                                            <i class="bi bi-bookmarks text-primary"></i> 내 독서 기록
                                         </a>
                                     </li>
                                     <li>
-                                        <a class="dropdown-item small rounded-3 d-flex align-items-center gap-2 py-2 text-danger" asp-controller="Auth" asp-action="Logout">
-                                            <i class="bi bi-box-arrow-right"></i> 로그아웃
-                                        </a>
+                                        <form asp-controller="Auth" asp-action="Logout" method="post">
+                                            <button type="submit" class="dropdown-item small rounded-3 d-flex align-items-center gap-2 py-2 text-danger">
+                                                <i class="bi bi-box-arrow-right"></i> 로그아웃
+                                            </button>
+                                        </form>
                                     </li>
                                 </ul>
                             </div>
@@ -194,7 +197,7 @@
         </main>
     </div>
 
-    <!-- Global Book Search Modal (SaaS UI) -->
+    <!-- Global Book Search Modal -->
     <div class="modal fade" id="searchModal" tabindex="-1" aria-labelledby="searchModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
@@ -204,8 +207,8 @@
                             <i class="bi bi-search fs-5"></i>
                         </span>
                         <div>
-                            <h5 class="modal-title fw-bold mb-0 text-dark" id="searchModalLabel">도서 검색 및 서재 등록</h5>
-                            <span class="text-muted small">카카오 도서 검색 API 실시간 연동</span>
+                            <h5 class="modal-title fw-bold mb-0 text-dark" id="searchModalLabel">책 찾기</h5>
+                            <span class="text-muted small">제목이나 저자로 책을 찾고 내 기록에 담아보세요</span>
                         </div>
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -235,12 +238,12 @@
                         <div class="col-12 text-center text-muted py-5">
                             <i class="bi bi-book-half fs-1 text-muted opacity-50"></i>
                             <h6 class="fw-bold mt-3 text-secondary">궁금한 책을 검색해 보세요</h6>
-                            <p class="text-muted small mb-0">도서를 검색하고 [독서록 쓰기]를 바로 시작할 수 있습니다.</p>
+                            <p class="text-muted small mb-0">찾은 책을 읽고 싶은 책에 담거나 바로 독서록을 작성할 수 있습니다.</p>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer bg-light border-0 py-3 px-4">
-                    <span class="text-muted small me-auto"><i class="bi bi-lightning-charge-fill text-warning me-1"></i>카카오 Open API로 도서 정보를 실시간 제공합니다.</span>
+                    <span class="text-muted small me-auto"><i class="bi bi-lightning-charge-fill text-warning me-1"></i>도서 정보는 카카오 도서 검색을 통해 제공합니다.</span>
                     <button type="button" class="btn btn-outline-secondary btn-sm px-3 rounded-pill" data-bs-dismiss="modal">닫기</button>
                 </div>
             </div>
@@ -261,8 +264,8 @@
 
     <footer class="footer mt-auto py-4 bg-white border-top text-muted small">
         <div class="container d-flex flex-wrap justify-content-between align-items-center">
-            <span>&copy; 2026 <strong class="text-dark">Read.me</strong> — A Modern Reading Journal built with ASP.NET Core &amp; Azure</span>
-            <span>Powered by <a href="https://github.com/dh1180/Read.md" target="_blank" class="text-decoration-none text-primary"><i class="bi bi-github"></i> GitHub</a></span>
+            <span>&copy; 2026 <strong class="text-dark">Read.me</strong> — 읽은 책과 문장을 기록하는 독서 커뮤니티</span>
+            <span>Powered by <a href="https://github.com/dh1180/Read.me" target="_blank" class="text-decoration-none text-primary"><i class="bi bi-github"></i> GitHub</a></span>
         </div>
     </footer>
 

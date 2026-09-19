@@ -4,6 +4,7 @@
     var bookTitle = Model.Book?.Title ?? "도서 독서록";
     var bookAuthor = Model.Book?.Author ?? "저자 미상";
     var reviewer = string.IsNullOrWhiteSpace(Model.ReviewerName) ? "독서가" : Model.ReviewerName;
+    var isOwner = User.Identity?.IsAuthenticated == true && string.Equals(Model.ReviewerName, User.Identity.Name, StringComparison.Ordinal);
     ViewData["Title"] = $"{bookTitle} ({bookAuthor}) - {reviewer}님의 독서록";
     
     var desc = !string.IsNullOrWhiteSpace(Model.Summary)
@@ -27,34 +28,34 @@
 {
   "@@context": "https://schema.org",
   "@@type": "Review",
-  "name": "@Html.Raw(bookTitle.Replace("\"", "\\\"")) 독서록",
-  "reviewBody": "@Html.Raw((Model.Content ?? "").Replace("\"", "\\\"").Replace("\r", "").Replace("\n", " "))",
+  "name": @Html.Raw(System.Text.Json.JsonSerializer.Serialize($"{bookTitle} 독서록")),
+  "reviewBody": @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Content ?? "")),
   "reviewRating": {
     "@@type": "Rating",
-    "ratingValue": "@Model.Rating",
-    "bestRating": "5",
-    "worstRating": "1"
+    "ratingValue": @Model.Rating,
+    "bestRating": 5,
+    "worstRating": 1
   },
   "author": {
     "@@type": "Person",
-    "name": "@Html.Raw(reviewer.Replace("\"", "\\\""))"
+    "name": @Html.Raw(System.Text.Json.JsonSerializer.Serialize(reviewer))
   },
   "itemReviewed": {
     "@@type": "Book",
-    "name": "@Html.Raw(bookTitle.Replace("\"", "\\\""))",
+    "name": @Html.Raw(System.Text.Json.JsonSerializer.Serialize(bookTitle)),
     "author": {
       "@@type": "Person",
-      "name": "@Html.Raw(bookAuthor.Replace("\"", "\\\""))"
+      "name": @Html.Raw(System.Text.Json.JsonSerializer.Serialize(bookAuthor))
     },
-    "isbn": "@Model.Book?.Isbn",
-    "image": "@Model.Book?.CoverImageUrl"
+    "isbn": @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Book?.Isbn ?? "")),
+    "image": @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Book?.CoverImageUrl ?? ""))
   }
 }
 </script>
 
 <div class="mb-4 d-flex justify-content-between align-items-center">
-    <a asp-action="Index" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
-        <i class="bi bi-arrow-left me-1"></i> 서재 목록으로
+    <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+        <i class="bi bi-arrow-left me-1"></i> 모두의 독서록으로
     </a>
     <a asp-controller="Books" asp-action="Create" class="btn btn-primary-gradient btn-sm px-3 rounded-pill">
         <i class="bi bi-pencil-square me-1"></i> 새 독서록 작성
@@ -136,9 +137,9 @@
         <!-- Memorable Quote (if exists) -->
         @if (!string.IsNullOrWhiteSpace(Model.Quote))
         {
-            <div class="quote-callout my-3 p-4 rounded-3 position-relative" style="background: #faf5ff; border-left: 5px solid #8b5cf6;">
+            <div class="quote-callout my-3 p-4 rounded-3 position-relative" style="background: #f3f6f1; border-left: 5px solid #5c7d66;">
                 <i class="bi bi-quote text-primary opacity-50 fs-2 position-absolute" style="top: -2px; left: 8px;"></i>
-                <h6 class="fw-bold text-dark mb-1 ps-4" style="font-size: 0.85rem; color: #6d28d9 !important;">
+                <h6 class="fw-bold text-dark mb-1 ps-4" style="font-size: 0.85rem; color: #35523f !important;">
                     <i class="bi bi-lightbulb-fill me-1"></i> 인상 깊은 한 문장
                 </h6>
                 <p class="mb-0 text-dark fst-italic ps-4 fs-6" style="line-height: 1.7;">
@@ -180,6 +181,8 @@
 <!-- Reading Notes & Quotes Section -->
 <div class="row g-4">
     <!-- Left: New Note Form with Live Markdown Preview -->
+    @if (isOwner)
+    {
     <div class="col-lg-5">
         <div class="card border-0 shadow-sm sticky-top" style="top: 80px; border-radius: 16px;">
             <div class="card-header bg-white py-3 border-0">
@@ -223,8 +226,10 @@
         </div>
     </div>
 
+    }
+
     <!-- Right: Notes Timeline -->
-    <div class="col-lg-7">
+    <div class="@(isOwner ? "col-lg-7" : "col-12")">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="fw-bold mb-0">
                 <i class="bi bi-chat-left-quote-fill text-info me-1"></i> 추가 기록 목록 (<span id="notesCount">@Model.Notes.Count</span>)
@@ -250,9 +255,12 @@
                             <span class="badge bg-primary rounded-pill px-2">p.@note.PageNumber</span>
                             <div class="d-flex align-items-center gap-2">
                                 <span class="text-muted small">@note.CreatedAt.ToString("yyyy-MM-dd HH:mm")</span>
-                                <button type="button" class="btn btn-outline-danger btn-sm py-0 px-1 btn-delete-note" data-id="@note.Id" title="메모 삭제">
-                                    <i class="bi bi-x"></i>
-                                </button>
+                                @if (isOwner)
+                                {
+                                    <button type="button" class="btn btn-outline-danger btn-sm py-0 px-1 btn-delete-note" data-id="@note.Id" title="메모 삭제">
+                                        <i class="bi bi-x"></i>
+                                    </button>
+                                }
                             </div>
                         </div>
 

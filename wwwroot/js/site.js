@@ -1,6 +1,15 @@
 // Read.me - Modern Reading Journal (ASP.NET Core MVC + jQuery Ajax)
 $(document).ready(function () {
 
+
+    // Send ASP.NET Core antiforgery token with jQuery Ajax requests.
+    var antiForgeryToken = $('input[name="__RequestVerificationToken"]').first().val();
+    if (antiForgeryToken) {
+        $.ajaxSetup({
+            headers: { 'RequestVerificationToken': antiForgeryToken }
+        });
+    }
+
     // In-memory cache for search results to avoid HTML attribute quoting/escaping issues
     var currentSearchResults = [];
 
@@ -416,14 +425,22 @@ $(document).ready(function () {
             success: function (res) {
                 if (res.success && res.data) {
                     likeCountEl.text(res.data.likes);
+                    btn.prop('disabled', true).addClass('liked');
+                    heartIcon.removeClass('bi-heart').addClass('bi-heart-fill');
                     heartIcon.css('transform', 'scale(1.5)');
                     setTimeout(function () {
                         heartIcon.css('transform', 'scale(1)');
                     }, 200);
                     showToast('이 독서록에 공감했습니다! ❤️', true);
+                } else if (res.message) {
+                    showToast(res.message, false);
                 }
             },
-            error: function () {
+            error: function (xhr) {
+                if (xhr.status === 401 || xhr.status === 302) {
+                    showToast('공감하려면 로그인이 필요합니다.', false);
+                    return;
+                }
                 showToast('좋아요 처리 중 오류가 발생했습니다.', false);
             }
         });
@@ -442,7 +459,8 @@ $(document).ready(function () {
                 return;
             }
 
-            var html = text
+            var safeText = escapeHtml(text);
+            var html = safeText
                 .replace(/^### (.*$)/gim, '<h6>$1</h6>')
                 .replace(/^## (.*$)/gim, '<h5>$1</h5>')
                 .replace(/^# (.*$)/gim, '<h4>$1</h4>')

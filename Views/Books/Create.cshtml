@@ -114,7 +114,7 @@
                         작성자 닉네임
                         @if (User.Identity?.IsAuthenticated == true)
                         {
-                            <span class="badge rounded-pill ms-1 px-2 py-1" style="background-color: #f5f3ff; color: #7c3aed; font-size: 0.72rem;"><i class="bi bi-chat-fill me-1"></i>카카오</span>
+                            <span class="badge rounded-pill ms-1 px-2 py-1" style="background-color: #eef4ef; color: #496a57; font-size: 0.72rem;"><i class="bi bi-chat-fill me-1"></i>카카오</span>
                         }
                     </label>
                     <input asp-for="ReviewerName" class="form-control rounded-3" placeholder="닉네임" />
@@ -193,7 +193,7 @@
             <!-- Tab Switcher (Write vs Live Markdown Preview) -->
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div class="btn-group p-1 bg-light rounded-pill border" role="group" id="editorModeGroup">
-                    <button type="button" class="btn btn-sm rounded-pill px-3 py-1 fw-semibold" id="btnModeWrite" style="background-color: #7c3aed; color: #ffffff; font-size: 0.8rem;">
+                    <button type="button" class="btn btn-sm rounded-pill px-3 py-1 fw-semibold" id="btnModeWrite" style="background-color: #496a57; color: #ffffff; font-size: 0.8rem;">
                         <i class="bi bi-pencil-fill me-1"></i>작성하기
                     </button>
                     <button type="button" class="btn btn-sm rounded-pill px-3 py-1 fw-semibold text-secondary" id="btnModePreview" style="background-color: transparent; font-size: 0.8rem;">
@@ -283,6 +283,7 @@
 
         function updateMarkdownPreview() {
             const raw = txtReview.value.trim();
+            const safeRaw = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             if (!raw) {
                 previewEmpty.style.display = 'block';
                 previewRendered.style.display = 'none';
@@ -291,15 +292,15 @@
                 previewEmpty.style.display = 'none';
                 previewRendered.style.display = 'block';
                 if (typeof marked !== 'undefined') {
-                    previewRendered.innerHTML = marked.parse(raw);
+                    previewRendered.innerHTML = marked.parse(safeRaw);
                 } else {
-                    previewRendered.innerHTML = raw.replace(/\n/g, '<br/>');
+                    previewRendered.innerHTML = safeRaw.replace(/\n/g, '<br/>');
                 }
             }
         }
 
         function switchToWriteMode() {
-            btnWrite.style.backgroundColor = '#7c3aed';
+            btnWrite.style.backgroundColor = '#496a57';
             btnWrite.style.color = '#ffffff';
             btnPreview.style.backgroundColor = 'transparent';
             btnPreview.style.color = '#6c757d';
@@ -309,7 +310,7 @@
         }
 
         function switchToPreviewMode() {
-            btnPreview.style.backgroundColor = '#7c3aed';
+            btnPreview.style.backgroundColor = '#496a57';
             btnPreview.style.color = '#ffffff';
             btnWrite.style.backgroundColor = 'transparent';
             btnWrite.style.color = '#6c757d';

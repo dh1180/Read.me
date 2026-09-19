@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReadMeApp.Data;
@@ -11,6 +12,7 @@ namespace ReadMeApp.Controllers;
 
 public class HomeController : Controller
 {
+    private const int PageSize = 12;
     private readonly ReadmeDbContext _context;
     private readonly IReadmeExportService _exportService;
 
@@ -20,22 +22,29 @@ public class HomeController : Controller
         _exportService = exportService;
     }
 
-    public async Task<IActionResult> Index(string sort = "latest", string? query = null)
+    public async Task<IActionResult> Index(string sort = "latest", string? query = null, int page = 1)
     {
+        page = Math.Max(page, 1);
+
         var bookReviewsQuery = _context.UserBooks
             .Include(ub => ub.Book)
+            .Where(ub => ub.Status == ReadingStatus.Completed && ub.Content != null && ub.Content != "")
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(query))
         {
             var q = query.Trim().ToLower();
-            bookReviewsQuery = bookReviewsQuery.Where(ub => 
+            bookReviewsQuery = bookReviewsQuery.Where(ub =>
                 (ub.Book != null && (ub.Book.Title.ToLower().Contains(q) || ub.Book.Author.ToLower().Contains(q))) ||
                 (ub.Summary != null && ub.Summary.ToLower().Contains(q)) ||
                 (ub.Quote != null && ub.Quote.ToLower().Contains(q)) ||
                 (ub.Content != null && ub.Content.ToLower().Contains(q)) ||
                 ub.ReviewerName.ToLower().Contains(q));
         }
+
+        var filteredCount = await bookReviewsQuery.CountAsync();
+        var totalPages = Math.Max(1, (int)Math.Ceiling(filteredCount / (double)PageSize));
+        page = Math.Min(page, totalPages);
 
         bookReviewsQuery = sort switch
         {
@@ -44,10 +53,18 @@ public class HomeController : Controller
             _ => bookReviewsQuery.OrderByDescending(ub => ub.CreatedAt)
         };
 
-        var reviews = await bookReviewsQuery.ToListAsync();
-        var totalReviewsCount = await _context.UserBooks.CountAsync();
+        var reviews = await bookReviewsQuery
+            .Skip((page - 1) * PageSize)
+            .Take(PageSize)
+            .ToListAsync();
+
+        var totalReviewsCount = await _context.UserBooks.CountAsync(
+            ub => ub.Status == ReadingStatus.Completed && ub.Content != null && ub.Content != "");
         var totalBooksCount = await _context.Books.CountAsync();
-        var popularBooks = await _context.Books.OrderByDescending(b => b.UserBooks.Count).Take(6).ToListAsync();
+        var popularBooks = await _context.Books
+            .OrderByDescending(b => b.UserBooks.Count(ub => ub.Status == ReadingStatus.Completed))
+            .Take(6)
+            .ToListAsync();
 
         var model = new DashboardViewModel
         {
@@ -56,26 +73,34 @@ public class HomeController : Controller
             Reviews = reviews,
             PopularBooks = popularBooks,
             CurrentSort = sort,
-            SearchQuery = query
+            SearchQuery = query,
+            CurrentPage = page,
+            PageSize = PageSize,
+            TotalPages = totalPages,
+            FilteredReviewsCount = filteredCount
         };
 
         return View(model);
     }
 
+    [Authorize]
     [HttpGet]
     public async Task<IActionResult> ExportReadme()
     {
-        var markdown = await _exportService.GenerateReadmeMarkdownAsync();
+        var reviewerName = User.Identity?.Name;
+        if (string.IsNullOrWhiteSpace(reviewerName)) return Unauthorized();
+
+        var markdown = await _exportService.GenerateReadmeMarkdownAsync(reviewerName);
         return Json(ApiResponse<string>.Ok(markdown));
     }
 
-    // GET: /sitemap.xml (SEO Dynamic Sitemap for Google/Naver)
     [HttpGet]
     [Route("sitemap.xml")]
     public async Task<IActionResult> Sitemap()
     {
         var baseUrl = $"{Request.Scheme}://{Request.Host}";
         var reviews = await _context.UserBooks
+            .Where(ub => ub.Status == ReadingStatus.Completed && ub.Content != null && ub.Content != "")
             .OrderByDescending(ub => ub.UpdatedAt)
             .Take(1000)
             .ToListAsync();
@@ -83,49 +108,18 @@ public class HomeController : Controller
         var sb = new StringBuilder();
         sb.AppendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
         sb.AppendLine("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">");
+        sb.AppendLine($"  <url><loc>{baseUrl}/</loc><lastmod>{DateTime.UtcNow:yyyy-MM-dd}</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>");
 
-        // Main Home Page
-        sb.AppendLine("  <url>");
-        sb.AppendLine($"    <loc>{baseUrl}/</loc>");
-        sb.AppendLine($"    <lastmod>{DateTime.UtcNow:yyyy-MM-dd}</lastmod>");
-        sb.AppendLine("    <changefreq>daily</changefreq>");
-        sb.AppendLine("    <priority>1.0</priority>");
-        sb.AppendLine("  </url>");
-
-        // Books Index Page
-        sb.AppendLine("  <url>");
-        sb.AppendLine($"    <loc>{baseUrl}/Books</loc>");
-        sb.AppendLine($"    <lastmod>{DateTime.UtcNow:yyyy-MM-dd}</lastmod>");
-        sb.AppendLine("    <changefreq>daily</changefreq>");
-        sb.AppendLine("    <priority>0.9</priority>");
-        sb.AppendLine("  </url>");
-
-        // Review Create Page
-        sb.AppendLine("  <url>");
-        sb.AppendLine($"    <loc>{baseUrl}/Books/Create</loc>");
-        sb.AppendLine($"    <lastmod>{DateTime.UtcNow:yyyy-MM-dd}</lastmod>");
-        sb.AppendLine("    <changefreq>weekly</changefreq>");
-        sb.AppendLine("    <priority>0.7</priority>");
-        sb.AppendLine("  </url>");
-
-        // Dynamic Review Detail Pages
         foreach (var review in reviews)
         {
             var lastMod = (review.UpdatedAt != default ? review.UpdatedAt : review.CreatedAt).ToString("yyyy-MM-dd");
-            sb.AppendLine("  <url>");
-            sb.AppendLine($"    <loc>{baseUrl}/Books/Details/{review.Id}</loc>");
-            sb.AppendLine($"    <lastmod>{lastMod}</lastmod>");
-            sb.AppendLine("    <changefreq>weekly</changefreq>");
-            sb.AppendLine("    <priority>0.8</priority>");
-            sb.AppendLine("  </url>");
+            sb.AppendLine($"  <url><loc>{baseUrl}/Books/Details/{review.Id}</loc><lastmod>{lastMod}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>");
         }
 
         sb.AppendLine("</urlset>");
-
         return Content(sb.ToString(), "application/xml", Encoding.UTF8);
     }
 
-    // GET: /robots.txt (SEO Crawler Directives)
     [HttpGet]
     [Route("robots.txt")]
     public IActionResult Robots()
@@ -136,9 +130,9 @@ public class HomeController : Controller
         sb.AppendLine("Allow: /");
         sb.AppendLine("Disallow: /Auth/");
         sb.AppendLine("Disallow: /Search/AddToLibrary");
+        sb.AppendLine("Disallow: /Books/Create");
         sb.AppendLine();
         sb.AppendLine($"Sitemap: {baseUrl}/sitemap.xml");
-
         return Content(sb.ToString(), "text/plain", Encoding.UTF8);
     }
 

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReadMeApp.Data;
@@ -8,6 +9,7 @@ namespace ReadMeApp.Controllers;
 
 public class BooksController : Controller
 {
+    private const int PageSize = 12;
     private readonly ReadmeDbContext _context;
     private readonly ILogger<BooksController> _logger;
 
@@ -17,12 +19,35 @@ public class BooksController : Controller
         _logger = logger;
     }
 
-    // GET: /Books
-    public async Task<IActionResult> Index(string? sort, string? query)
+    [Authorize]
+    public async Task<IActionResult> Index(string? sort, string? query, string status = "all", int page = 1)
     {
+        var reviewerName = User.Identity?.Name;
+        if (string.IsNullOrWhiteSpace(reviewerName)) return Challenge();
+
+        page = Math.Max(page, 1);
+
         var bookReviewsQuery = _context.UserBooks
             .Include(ub => ub.Book)
+            .Where(ub => ub.ReviewerName == reviewerName)
             .AsQueryable();
+
+        if (status.Equals("wishlist", StringComparison.OrdinalIgnoreCase))
+        {
+            bookReviewsQuery = bookReviewsQuery.Where(ub => ub.Status == ReadingStatus.Wishlist);
+        }
+        else if (status.Equals("reading", StringComparison.OrdinalIgnoreCase))
+        {
+            bookReviewsQuery = bookReviewsQuery.Where(ub => ub.Status == ReadingStatus.Reading);
+        }
+        else if (status.Equals("completed", StringComparison.OrdinalIgnoreCase))
+        {
+            bookReviewsQuery = bookReviewsQuery.Where(ub => ub.Status == ReadingStatus.Completed);
+        }
+        else
+        {
+            status = "all";
+        }
 
         if (!string.IsNullOrWhiteSpace(query))
         {
@@ -31,24 +56,35 @@ public class BooksController : Controller
                 (ub.Book != null && (ub.Book.Title.ToLower().Contains(q) || ub.Book.Author.ToLower().Contains(q))) ||
                 (ub.Summary != null && ub.Summary.ToLower().Contains(q)) ||
                 (ub.Quote != null && ub.Quote.ToLower().Contains(q)) ||
-                (ub.Content != null && ub.Content.ToLower().Contains(q)) ||
-                ub.ReviewerName.ToLower().Contains(q));
+                (ub.Content != null && ub.Content.ToLower().Contains(q)));
         }
+
+        var filteredCount = await bookReviewsQuery.CountAsync();
+        var totalPages = Math.Max(1, (int)Math.Ceiling(filteredCount / (double)PageSize));
+        page = Math.Min(page, totalPages);
 
         bookReviewsQuery = sort switch
         {
             "popular" => bookReviewsQuery.OrderByDescending(ub => ub.LikesCount).ThenByDescending(ub => ub.CreatedAt),
             "rating" => bookReviewsQuery.OrderByDescending(ub => ub.Rating).ThenByDescending(ub => ub.CreatedAt),
-            _ => bookReviewsQuery.OrderByDescending(ub => ub.CreatedAt)
+            _ => bookReviewsQuery.OrderByDescending(ub => ub.UpdatedAt)
         };
 
-        var list = await bookReviewsQuery.ToListAsync();
+        var list = await bookReviewsQuery
+            .Skip((page - 1) * PageSize)
+            .Take(PageSize)
+            .ToListAsync();
+
         ViewBag.CurrentSort = sort ?? "latest";
         ViewBag.SearchQuery = query;
+        ViewBag.CurrentStatus = status;
+        ViewBag.CurrentPage = page;
+        ViewBag.TotalPages = totalPages;
+        ViewBag.FilteredCount = filteredCount;
+
         return View(list);
     }
 
-    // GET: /Books/Details/5
     public async Task<IActionResult> Details(int id)
     {
         var userBook = await _context.UserBooks
@@ -56,15 +92,11 @@ public class BooksController : Controller
             .Include(ub => ub.Notes.OrderByDescending(n => n.CreatedAt))
             .FirstOrDefaultAsync(ub => ub.Id == id);
 
-        if (userBook == null)
-        {
-            return NotFound();
-        }
-
+        if (userBook == null) return NotFound();
         return View(userBook);
     }
 
-    // GET: /Books/Create
+    [Authorize]
     [HttpGet]
     public IActionResult Create(string? isbn = null, string? title = null, string? author = null, string? cover = null)
     {
@@ -74,18 +106,15 @@ public class BooksController : Controller
             Title = title ?? string.Empty,
             Author = author ?? string.Empty,
             CoverImageUrl = cover ?? string.Empty,
-            ReviewerName = User.Identity?.IsAuthenticated == true && !string.IsNullOrWhiteSpace(User.Identity.Name)
-                ? User.Identity.Name
-                : "익명의 독서가",
+            ReviewerName = User.Identity?.Name ?? "독서가",
             Rating = 5,
             ReadDate = DateTime.Today
         };
         return View(model);
     }
 
-    // POST: /Books/Create
+    [Authorize]
     [HttpPost]
-    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(CreateReviewRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Title))
@@ -102,79 +131,13 @@ public class BooksController : Controller
 
         try
         {
-            var isbn = string.IsNullOrWhiteSpace(request.Isbn)
-                ? Guid.NewGuid().ToString("N")[..13]
-                : request.Isbn.Trim();
-            if (isbn.Length > 50) isbn = isbn[..50];
+            var book = await FindOrCreateBookAsync(request);
+            var reviewer = User.Identity?.Name ?? "독서가";
 
-            var title = request.Title.Trim();
-            if (title.Length > 200) title = title[..200];
+            var userBook = await CreateOrUpdateReviewAsync(book, reviewer, request);
 
-            var author = request.Author?.Trim() ?? "저자 미상";
-            if (author.Length > 100) author = author[..100];
-
-            var publisher = request.Publisher?.Trim() ?? "";
-            if (publisher.Length > 100) publisher = publisher[..100];
-
-            var cover = request.CoverImageUrl?.Trim() ?? "";
-            if (cover.Length > 500) cover = cover[..500];
-
-            var desc = request.Description?.Trim() ?? "";
-            if (desc.Length > 2000) desc = desc[..2000];
-
-            var book = await _context.Books.FirstOrDefaultAsync(b => b.Isbn == isbn);
-            if (book == null)
-            {
-                book = new Book
-                {
-                    Isbn = isbn,
-                    Title = title,
-                    Author = author,
-                    Publisher = publisher,
-                    CoverImageUrl = cover,
-                    TotalPages = 300,
-                    Description = desc
-                };
-                _context.Books.Add(book);
-                await _context.SaveChangesAsync();
-            }
-
-            var reviewer = string.IsNullOrWhiteSpace(request.ReviewerName)
-                ? (User.Identity?.IsAuthenticated == true && !string.IsNullOrWhiteSpace(User.Identity.Name) ? User.Identity.Name : "익명의 독서가")
-                : request.ReviewerName.Trim();
-            if (reviewer.Length > 50) reviewer = reviewer[..50];
-
-            var summary = request.Summary?.Trim();
-            if (summary != null && summary.Length > 200) summary = summary[..200];
-
-            var quote = request.Quote?.Trim();
-            if (quote != null && quote.Length > 500) quote = quote[..500];
-
-            var content = request.Content.Trim();
-            if (content.Length > 4000) content = content[..4000];
-
-            var rating = Math.Clamp(request.Rating, 1, 5);
-
-            var userBook = new UserBook
-            {
-                BookId = book.Id,
-                ReviewerName = reviewer,
-                Rating = rating,
-                Summary = summary,
-                Quote = quote,
-                Content = content,
-                ReadDate = request.ReadDate ?? DateTime.UtcNow,
-                LikesCount = 0,
-                Status = ReadingStatus.Completed,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-
-            _context.UserBooks.Add(userBook);
-            await _context.SaveChangesAsync();
-
-            TempData["AuthSuccess"] = $"'{title}' 독서록이 성공적으로 등록되었습니다!";
-            return RedirectToAction("Index", "Home");
+            TempData["AuthSuccess"] = $"'{book.Title}' 독서록이 등록되었습니다.";
+            return RedirectToAction(nameof(Index));
         }
         catch (Exception ex)
         {
@@ -184,7 +147,7 @@ public class BooksController : Controller
         }
     }
 
-    // POST: /Books/CreateReview (Ajax)
+    [Authorize]
     [HttpPost]
     public async Task<IActionResult> CreateReview([FromBody] CreateReviewRequest? request)
     {
@@ -195,94 +158,26 @@ public class BooksController : Controller
 
         if (string.IsNullOrWhiteSpace(request.Content))
         {
-            return Json(ApiResponse<object>.Fail("독서록 본문(감상평)을 작성해 주세요."));
+            return Json(ApiResponse<object>.Fail("독서록 본문을 작성해 주세요."));
         }
 
         try
         {
-            var isbn = string.IsNullOrWhiteSpace(request.Isbn)
-                ? Guid.NewGuid().ToString("N")[..13]
-                : request.Isbn.Trim();
-            if (isbn.Length > 50) isbn = isbn[..50];
+            var book = await FindOrCreateBookAsync(request);
+            var reviewer = User.Identity?.Name ?? "독서가";
 
-            var title = request.Title.Trim();
-            if (title.Length > 200) title = title[..200];
+            var userBook = await CreateOrUpdateReviewAsync(book, reviewer, request);
 
-            var author = request.Author?.Trim() ?? "저자 미상";
-            if (author.Length > 100) author = author[..100];
-
-            var publisher = request.Publisher?.Trim() ?? "";
-            if (publisher.Length > 100) publisher = publisher[..100];
-
-            var cover = request.CoverImageUrl?.Trim() ?? "";
-            if (cover.Length > 500) cover = cover[..500];
-
-            var desc = request.Description?.Trim() ?? "";
-            if (desc.Length > 2000) desc = desc[..2000];
-
-            // 1. Find or create Book entity
-            var book = await _context.Books.FirstOrDefaultAsync(b => b.Isbn == isbn);
-            if (book == null)
-            {
-                book = new Book
-                {
-                    Isbn = isbn,
-                    Title = title,
-                    Author = author,
-                    Publisher = publisher,
-                    CoverImageUrl = cover,
-                    TotalPages = 300,
-                    Description = desc
-                };
-                _context.Books.Add(book);
-                await _context.SaveChangesAsync();
-            }
-
-            // 2. Create UserBook (Review)
-            var reviewer = string.IsNullOrWhiteSpace(request.ReviewerName)
-                ? (User.Identity?.IsAuthenticated == true && !string.IsNullOrWhiteSpace(User.Identity.Name) ? User.Identity.Name : "익명의 독서가")
-                : request.ReviewerName.Trim();
-            if (reviewer.Length > 50) reviewer = reviewer[..50];
-
-            var summary = request.Summary?.Trim();
-            if (summary != null && summary.Length > 200) summary = summary[..200];
-
-            var quote = request.Quote?.Trim();
-            if (quote != null && quote.Length > 500) quote = quote[..500];
-
-            var content = request.Content.Trim();
-            if (content.Length > 4000) content = content[..4000];
-
-            var rating = Math.Clamp(request.Rating, 1, 5);
-
-            var userBook = new UserBook
-            {
-                BookId = book.Id,
-                ReviewerName = reviewer,
-                Rating = rating,
-                Summary = summary,
-                Quote = quote,
-                Content = content,
-                ReadDate = request.ReadDate ?? DateTime.UtcNow,
-                LikesCount = 0,
-                Status = ReadingStatus.Completed,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-
-            _context.UserBooks.Add(userBook);
-            await _context.SaveChangesAsync();
-
-            return Json(ApiResponse<object>.Ok(new { id = userBook.Id }, $"'{book.Title}' 독서록이 등록되었습니다!"));
+            return Json(ApiResponse<object>.Ok(new { id = userBook.Id }, $"'{book.Title}' 독서록이 등록되었습니다."));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "독서록 등록 중 오류 발생");
-            return Json(ApiResponse<object>.Fail($"독서록 등록 중 오류가 발생했습니다: {ex.Message}"));
+            return Json(ApiResponse<object>.Fail("독서록 등록 중 오류가 발생했습니다."));
         }
     }
 
-    // POST: /Books/Like/5 (Ajax)
+    [Authorize]
     [HttpPost]
     public async Task<IActionResult> Like(int id)
     {
@@ -292,22 +187,125 @@ public class BooksController : Controller
             return Json(ApiResponse<object>.Fail("독서록을 찾을 수 없습니다."));
         }
 
+        var cookieName = $"readme_like_{id}";
+        if (Request.Cookies.ContainsKey(cookieName))
+        {
+            return Json(ApiResponse<object>.Fail("이미 공감한 독서록입니다."));
+        }
+
         userBook.LikesCount++;
         await _context.SaveChangesAsync();
 
-        return Json(ApiResponse<object>.Ok(new { likes = userBook.LikesCount }, "좋아요를 남겼습니다!"));
+        Response.Cookies.Append(cookieName, "1", new CookieOptions
+        {
+            HttpOnly = true,
+            IsEssential = true,
+            SameSite = SameSiteMode.Lax,
+            Secure = Request.IsHttps,
+            Expires = DateTimeOffset.UtcNow.AddDays(180)
+        });
+
+        return Json(ApiResponse<object>.Ok(new { likes = userBook.LikesCount }, "공감을 남겼습니다."));
     }
 
-    // POST: /Books/Delete/5
+    [Authorize]
     [HttpPost]
     public async Task<IActionResult> Delete(int id)
     {
         var userBook = await _context.UserBooks.FindAsync(id);
-        if (userBook != null)
-        {
-            _context.UserBooks.Remove(userBook);
-            await _context.SaveChangesAsync();
-        }
+        if (userBook == null) return NotFound();
+        if (!IsOwner(userBook)) return Forbid();
+
+        _context.UserBooks.Remove(userBook);
+        await _context.SaveChangesAsync();
+        TempData["AuthSuccess"] = "독서 기록을 삭제했습니다.";
         return RedirectToAction(nameof(Index));
+    }
+
+    private bool IsOwner(UserBook userBook)
+    {
+        return User.Identity?.IsAuthenticated == true &&
+               !string.IsNullOrWhiteSpace(User.Identity.Name) &&
+               string.Equals(userBook.ReviewerName, User.Identity.Name, StringComparison.Ordinal);
+    }
+
+    private async Task<UserBook> CreateOrUpdateReviewAsync(Book book, string reviewer, CreateReviewRequest request)
+    {
+        var normalizedReviewer = reviewer.Length > 50 ? reviewer[..50] : reviewer;
+        var userBook = await _context.UserBooks.FirstOrDefaultAsync(ub =>
+            ub.BookId == book.Id &&
+            ub.ReviewerName == normalizedReviewer &&
+            ub.Status != ReadingStatus.Completed);
+
+        if (userBook == null)
+        {
+            userBook = new UserBook
+            {
+                BookId = book.Id,
+                ReviewerName = normalizedReviewer,
+                LikesCount = 0,
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.UserBooks.Add(userBook);
+        }
+
+        userBook.Rating = Math.Clamp(request.Rating, 1, 5);
+        userBook.Summary = TrimTo(request.Summary, 200);
+        userBook.Quote = TrimTo(request.Quote, 500);
+        userBook.Content = TrimTo(request.Content, 4000);
+        userBook.ReadDate = request.ReadDate ?? DateTime.UtcNow;
+        userBook.Status = ReadingStatus.Completed;
+        userBook.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+        return userBook;
+    }
+
+    private async Task<Book> FindOrCreateBookAsync(CreateReviewRequest request)
+    {
+        var isbn = string.IsNullOrWhiteSpace(request.Isbn)
+            ? Guid.NewGuid().ToString("N")[..13]
+            : request.Isbn.Trim();
+        isbn = isbn.Length > 50 ? isbn[..50] : isbn;
+
+        var title = request.Title.Trim();
+        title = title.Length > 200 ? title[..200] : title;
+
+        var author = string.IsNullOrWhiteSpace(request.Author) ? "저자 미상" : request.Author.Trim();
+        author = author.Length > 100 ? author[..100] : author;
+
+        var publisher = request.Publisher?.Trim() ?? string.Empty;
+        publisher = publisher.Length > 100 ? publisher[..100] : publisher;
+
+        var cover = request.CoverImageUrl?.Trim() ?? string.Empty;
+        cover = cover.Length > 500 ? cover[..500] : cover;
+
+        var description = request.Description?.Trim() ?? string.Empty;
+        description = description.Length > 2000 ? description[..2000] : description;
+
+        var book = await _context.Books.FirstOrDefaultAsync(b => b.Isbn == isbn);
+        if (book != null) return book;
+
+        book = new Book
+        {
+            Isbn = isbn,
+            Title = title,
+            Author = author,
+            Publisher = publisher,
+            CoverImageUrl = cover,
+            TotalPages = 300,
+            Description = description
+        };
+
+        _context.Books.Add(book);
+        await _context.SaveChangesAsync();
+        return book;
+    }
+
+    private static string? TrimTo(string? value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        var trimmed = value.Trim();
+        return trimmed.Length > maxLength ? trimmed[..maxLength] : trimmed;
     }
 }

@@ -6,10 +6,8 @@ namespace ReadMeApp.Models;
 public class ReadingNote
 {
     public int Id { get; set; }
-
     public int UserBookId { get; set; }
     public UserBook? UserBook { get; set; }
-
     public int PageNumber { get; set; }
 
     [MaxLength(2000)]
@@ -28,6 +26,7 @@ public class ReadingNote
             if (string.IsNullOrWhiteSpace(Thought)) return string.Empty;
             var pipeline = new MarkdownPipelineBuilder()
                 .UseAdvancedExtensions()
+                .DisableHtml()
                 .Build();
             return Markdown.ToHtml(Thought, pipeline);
         }

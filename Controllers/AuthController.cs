@@ -116,8 +116,7 @@ public class AuthController : Controller
         return RedirectToLocal(state);
     }
 
-    // GET or POST: /Auth/Logout
-    [HttpGet]
+    // POST: /Auth/Logout
     [HttpPost]
     public async Task<IActionResult> Logout(string? returnUrl = null)
     {

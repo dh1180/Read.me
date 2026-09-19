@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReadMeApp.Data;
@@ -20,7 +21,6 @@ public class SearchController : Controller
         _logger = logger;
     }
 
-    // GET: /Search/Query?q=... (Ajax)
     [HttpGet]
     public async Task<IActionResult> Query(string? q, string? query)
     {
@@ -42,14 +42,10 @@ public class SearchController : Controller
         }
     }
 
-    // GET: /Search/SearchBooks?query=... (Alias Ajax endpoint)
     [HttpGet]
-    public Task<IActionResult> SearchBooks(string? query, string? q)
-    {
-        return Query(q, query);
-    }
+    public Task<IActionResult> SearchBooks(string? query, string? q) => Query(q, query);
 
-    // POST: /Search/AddToLibrary (Ajax)
+    [Authorize]
     [HttpPost]
     public async Task<IActionResult> AddToLibrary([FromBody] AddBookRequest? request)
     {
@@ -58,30 +54,29 @@ public class SearchController : Controller
             return Json(ApiResponse<object>.Fail("책 정보가 올바르지 않습니다."));
         }
 
+        var reviewerName = User.Identity?.Name;
+        if (string.IsNullOrWhiteSpace(reviewerName)) return Unauthorized();
+
         try
         {
-            // Truncate and sanitize inputs to prevent DB constraint errors
-            var isbn = string.IsNullOrWhiteSpace(request.Isbn) 
-                ? Guid.NewGuid().ToString("N")[..13] 
-                : request.Isbn.Trim();
-            if (isbn.Length > 50) isbn = isbn[..50];
+            var isbn = string.IsNullOrWhiteSpace(request.Isbn) ? Guid.NewGuid().ToString("N")[..13] : request.Isbn.Trim();
+            isbn = isbn.Length > 50 ? isbn[..50] : isbn;
 
             var title = request.Title.Trim();
-            if (title.Length > 200) title = title[..200];
+            title = title.Length > 200 ? title[..200] : title;
 
-            var author = request.Author?.Trim() ?? "저자 미상";
-            if (author.Length > 100) author = author[..100];
+            var author = string.IsNullOrWhiteSpace(request.Author) ? "저자 미상" : request.Author.Trim();
+            author = author.Length > 100 ? author[..100] : author;
 
-            var publisher = request.Publisher?.Trim() ?? "";
-            if (publisher.Length > 100) publisher = publisher[..100];
+            var publisher = request.Publisher?.Trim() ?? string.Empty;
+            publisher = publisher.Length > 100 ? publisher[..100] : publisher;
 
-            var cover = request.CoverImageUrl?.Trim() ?? "";
-            if (cover.Length > 500) cover = cover[..500];
+            var cover = request.CoverImageUrl?.Trim() ?? string.Empty;
+            cover = cover.Length > 500 ? cover[..500] : cover;
 
-            var desc = request.Description?.Trim() ?? "";
-            if (desc.Length > 2000) desc = desc[..2000];
+            var description = request.Description?.Trim() ?? string.Empty;
+            description = description.Length > 2000 ? description[..2000] : description;
 
-            // Find or create Book entity
             var book = await _context.Books.FirstOrDefaultAsync(b => b.Isbn == isbn);
             if (book == null)
             {
@@ -93,27 +88,26 @@ public class SearchController : Controller
                     Publisher = publisher,
                     CoverImageUrl = cover,
                     TotalPages = request.TotalPages > 0 ? request.TotalPages : 300,
-                    Description = desc
+                    Description = description
                 };
                 _context.Books.Add(book);
                 await _context.SaveChangesAsync();
             }
 
-            // Check if already in user's library
-            var existingUserBook = await _context.UserBooks.FirstOrDefaultAsync(ub => ub.BookId == book.Id);
+            var existingUserBook = await _context.UserBooks.FirstOrDefaultAsync(
+                ub => ub.BookId == book.Id && ub.ReviewerName == reviewerName);
+
             if (existingUserBook != null)
             {
-                return Json(ApiResponse<object>.Fail("이미 내 서재에 등록된 도서입니다."));
+                return Json(ApiResponse<object>.Fail("이미 내 기록에 등록된 책입니다."));
             }
 
             var userBook = new UserBook
             {
                 BookId = book.Id,
-                ReviewerName = "익명의 독서가",
+                ReviewerName = reviewerName.Length > 50 ? reviewerName[..50] : reviewerName,
                 Rating = 5,
-                Summary = "서재에 보관 중인 도서",
-                Content = desc.Length > 200 ? desc[..200] + "..." : desc,
-                Status = ReadingStatus.Completed,
+                Status = ReadingStatus.Wishlist,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -121,12 +115,14 @@ public class SearchController : Controller
             _context.UserBooks.Add(userBook);
             await _context.SaveChangesAsync();
 
-            return Json(ApiResponse<object>.Ok(new { userBookId = userBook.Id }, $"'{book.Title}'이(가) 서재에 추가되었습니다."));
+            return Json(ApiResponse<object>.Ok(
+                new { userBookId = userBook.Id },
+                $"'{book.Title}'을(를) 읽고 싶은 책에 담았습니다."));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "서재 등록 중 오류 발생");
-            return Json(ApiResponse<object>.Fail($"서재 추가 중 오류가 발생했습니다: {ex.Message}"));
+            return Json(ApiResponse<object>.Fail("책을 내 기록에 추가하는 중 오류가 발생했습니다."));
         }
     }
 }
