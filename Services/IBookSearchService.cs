@@ -4,5 +4,5 @@ namespace ReadMeApp.Services;
 
 public interface IBookSearchService
 {
-    Task<List<BookSearchResultDto>> SearchBooksAsync(string query);
+    Task<BookSearchPageDto> SearchBooksAsync(string query, int page = 1, int size = 20);
 }

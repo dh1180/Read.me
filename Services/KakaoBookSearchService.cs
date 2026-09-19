@@ -16,21 +16,29 @@ public class KakaoBookSearchService : IBookSearchService
         _logger = logger;
     }
 
-    public async Task<List<BookSearchResultDto>> SearchBooksAsync(string query)
+    public async Task<BookSearchPageDto> SearchBooksAsync(string query, int page = 1, int size = 20)
     {
+        page = Math.Clamp(page, 1, 50);
+        size = Math.Clamp(size, 1, 50);
+
         if (string.IsNullOrWhiteSpace(query))
         {
-            return new List<BookSearchResultDto>();
+            return new BookSearchPageDto
+            {
+                Page = page,
+                PageSize = size,
+                IsEnd = true
+            };
         }
 
         var apiKey = _configuration["Kakao:RestApiKey"];
-        
-        // If API key is configured, call Kakao Book Search Open API
+
         if (!string.IsNullOrWhiteSpace(apiKey))
         {
             try
             {
-                var request = new HttpRequestMessage(HttpMethod.Get, $"https://dapi.kakao.com/v3/search/book?query={Uri.EscapeDataString(query)}&size=15");
+                var url = $"https://dapi.kakao.com/v3/search/book?query={Uri.EscapeDataString(query)}&page={page}&size={size}";
+                var request = new HttpRequestMessage(HttpMethod.Get, url);
                 request.Headers.Add("Authorization", $"KakaoAK {apiKey}");
 
                 var response = await _httpClient.SendAsync(request);
@@ -38,7 +46,9 @@ public class KakaoBookSearchService : IBookSearchService
                 {
                     var json = await response.Content.ReadAsStringAsync();
                     using var doc = JsonDocument.Parse(json);
-                    var documents = doc.RootElement.GetProperty("documents");
+                    var root = doc.RootElement;
+                    var documents = root.GetProperty("documents");
+                    var meta = root.GetProperty("meta");
 
                     var list = new List<BookSearchResultDto>();
                     foreach (var item in documents.EnumerateArray())
@@ -54,9 +64,9 @@ public class KakaoBookSearchService : IBookSearchService
                         var authorsList = new List<string>();
                         if (item.TryGetProperty("authors", out var authorsElem))
                         {
-                            foreach (var a in authorsElem.EnumerateArray())
+                            foreach (var author in authorsElem.EnumerateArray())
                             {
-                                authorsList.Add(a.GetString() ?? "");
+                                authorsList.Add(author.GetString() ?? "");
                             }
                         }
 
@@ -67,13 +77,21 @@ public class KakaoBookSearchService : IBookSearchService
                             Author = string.Join(", ", authorsList),
                             Publisher = publisher,
                             CoverImageUrl = thumbnail,
-                            TotalPages = 320, // 카카오 API는 기본 페이지 수를 제공하지 않아 기본값 지정
+                            TotalPages = 320,
                             Description = contents,
                             PublishedDate = datetime.Length >= 10 ? datetime[..10] : datetime
                         });
                     }
 
-                    if (list.Count > 0) return list;
+                    return new BookSearchPageDto
+                    {
+                        Items = list,
+                        Page = page,
+                        PageSize = size,
+                        PageableCount = meta.TryGetProperty("pageable_count", out var pageable) ? pageable.GetInt32() : list.Count,
+                        TotalCount = meta.TryGetProperty("total_count", out var total) ? total.GetInt32() : list.Count,
+                        IsEnd = meta.TryGetProperty("is_end", out var isEnd) && isEnd.GetBoolean()
+                    };
                 }
             }
             catch (Exception ex)
@@ -82,8 +100,21 @@ public class KakaoBookSearchService : IBookSearchService
             }
         }
 
-        // Fallback / Sample Mock search for instant out-of-the-box demonstration
-        return GetMockSearchResults(query);
+        var mockResults = GetMockSearchResults(query);
+        var pagedMockResults = mockResults
+            .Skip((page - 1) * size)
+            .Take(size)
+            .ToList();
+
+        return new BookSearchPageDto
+        {
+            Items = pagedMockResults,
+            Page = page,
+            PageSize = size,
+            PageableCount = mockResults.Count,
+            TotalCount = mockResults.Count,
+            IsEnd = page * size >= mockResults.Count
+        };
     }
 
     private List<BookSearchResultDto> GetMockSearchResults(string query)

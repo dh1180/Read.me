@@ -10,9 +10,6 @@ $(document).ready(function () {
         });
     }
 
-    // In-memory cache for search results to avoid HTML attribute quoting/escaping issues
-    var currentSearchResults = [];
-
     // --- Toast Notification Helper ---
     function showToast(message, isSuccess = true) {
         var toastEl = $('#appToast');
@@ -30,15 +27,27 @@ $(document).ready(function () {
         toast.show();
     }
 
-    // --- 1. Global Book Search (jQuery Ajax) ---
+    // --- 1. Global Book Search (20 items per page + load more) ---
+    var currentSearchResults = [];
+    var currentSearchQuery = '';
+    var currentSearchPage = 1;
+    var currentSearchIsEnd = true;
+    var currentSearchPageableCount = 0;
+
     $('#btnExecuteSearch').on('click', function () {
         performSearch();
     });
 
     $('#inputBookSearch').on('keypress', function (e) {
         if (e.which === 13) {
+            e.preventDefault();
             performSearch();
         }
+    });
+
+    $('#btnLoadMoreBooks').on('click', function () {
+        if (!currentSearchQuery || currentSearchIsEnd) return;
+        loadSearchPage(currentSearchPage + 1, true);
     });
 
     function performSearch() {
@@ -48,18 +57,41 @@ $(document).ready(function () {
             return;
         }
 
-        $('#searchLoading').removeClass('d-none');
-        $('#searchResultsList').empty();
+        currentSearchQuery = query;
+        currentSearchPage = 1;
+        currentSearchIsEnd = true;
+        currentSearchPageableCount = 0;
         currentSearchResults = [];
+
+        $('#searchResultsList').empty();
+        $('#bookSearchMoreWrap, #bookSearchEndMessage').addClass('d-none');
+        loadSearchPage(1, false);
+    }
+
+    function loadSearchPage(page, append) {
+        var loadMoreButton = $('#btnLoadMoreBooks');
+
+        if (append) {
+            loadMoreButton.prop('disabled', true)
+                .html('<span class="spinner-border spinner-border-sm me-1"></span> 불러오는 중...');
+        } else {
+            $('#searchLoading').removeClass('d-none');
+        }
 
         $.ajax({
             url: '/Search/Query',
             type: 'GET',
-            data: { q: query },
+            data: { q: currentSearchQuery, page: page, size: 20 },
             dataType: 'json',
             success: function (response) {
                 $('#searchLoading').addClass('d-none');
-                if (!response.success || !response.data || response.data.length === 0) {
+
+                var pageData = response && response.data ? response.data : null;
+                var books = pageData && Array.isArray(pageData.items) ? pageData.items : [];
+
+                if (!response.success || (!append && books.length === 0)) {
+                    currentSearchResults = [];
+                    $('#bookSearchMoreWrap, #bookSearchEndMessage').addClass('d-none');
                     $('#searchResultsList').html(`
                         <div class="col-12 text-center text-muted py-5">
                             <i class="bi bi-search fs-1 text-muted opacity-50"></i>
@@ -70,51 +102,93 @@ $(document).ready(function () {
                     return;
                 }
 
-                currentSearchResults = response.data;
-                var html = '';
-                $.each(response.data, function (index, book) {
-                    var coverImg = book.coverImageUrl ? 
-                        `<img src="${book.coverImageUrl}" alt="${escapeHtml(book.title)}" class="search-book-cover" />` :
-                        `<div class="search-book-cover bg-light d-flex align-items-center justify-content-center text-secondary"><i class="bi bi-book fs-3"></i></div>`;
+                currentSearchPage = pageData.page || page;
+                currentSearchIsEnd = pageData.isEnd === true;
+                currentSearchPageableCount = pageData.pageableCount || 0;
 
-                    var publisherBadge = book.publisher ? 
-                        `<span class="badge bg-light text-secondary border small me-1">${escapeHtml(book.publisher)}</span>` : '';
-                    var dateBadge = book.publishedDate ? 
-                        `<span class="text-muted small" style="font-size: 0.78rem;"><i class="bi bi-calendar3 me-1"></i>${escapeHtml(book.publishedDate)}</span>` : '';
-
-                    html += `
-                        <div class="col-12">
-                            <div class="search-book-card">
-                                ${coverImg}
-                                <div class="search-book-info">
-                                    <div class="d-flex align-items-center gap-1 mb-1">
-                                        ${publisherBadge}
-                                        ${dateBadge}
-                                    </div>
-                                    <div class="search-book-title" title="${escapeHtml(book.title)}">${escapeHtml(book.title)}</div>
-                                    <div class="search-book-meta"><i class="bi bi-person me-1"></i>${escapeHtml(book.author || '저자 미상')}</div>
-                                    <p class="search-book-desc">${escapeHtml(book.description || '책 소개 정보가 없습니다.')}</p>
-                                </div>
-                                <div class="d-flex flex-column gap-2 flex-shrink-0 ms-2">
-                                    <button type="button" class="btn btn-primary-gradient btn-sm rounded-pill px-3 py-2 btn-write-review-from-search" data-index="${index}">
-                                        <i class="bi bi-pencil-square me-1"></i> 독서록 쓰기
-                                    </button>
-                                    <button type="button" class="btn btn-add-shelf btn-sm py-1" data-index="${index}">
-                                        <i class="bi bi-bookmark-plus me-1"></i> 서재 보관
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
-
-                $('#searchResultsList').html(html);
+                var startIndex = currentSearchResults.length;
+                currentSearchResults = currentSearchResults.concat(books);
+                renderGlobalSearchBooks(books, startIndex, append);
+                updateGlobalSearchPagination();
             },
             error: function () {
                 $('#searchLoading').addClass('d-none');
+                loadMoreButton.prop('disabled', false)
+                    .html('<i class="bi bi-chevron-down me-1"></i> 더보기');
                 showToast('도서 검색 중 오류가 발생했습니다.', false);
             }
         });
+    }
+
+    function renderGlobalSearchBooks(books, startIndex, append) {
+        var html = '';
+
+        $.each(books, function (offset, book) {
+            var index = startIndex + offset;
+            var coverImg = book.coverImageUrl ?
+                `<img src="${book.coverImageUrl}" alt="${escapeHtml(book.title)}" class="search-book-cover" />` :
+                `<div class="search-book-cover bg-light d-flex align-items-center justify-content-center text-secondary"><i class="bi bi-book fs-3"></i></div>`;
+
+            var publisherBadge = book.publisher ?
+                `<span class="badge bg-light text-secondary border small me-1">${escapeHtml(book.publisher)}</span>` : '';
+            var dateBadge = book.publishedDate ?
+                `<span class="text-muted small" style="font-size: 0.78rem;"><i class="bi bi-calendar3 me-1"></i>${escapeHtml(book.publishedDate)}</span>` : '';
+
+            html += `
+                <div class="col-12">
+                    <div class="search-book-card">
+                        ${coverImg}
+                        <div class="search-book-info">
+                            <div class="d-flex align-items-center gap-1 mb-1">
+                                ${publisherBadge}
+                                ${dateBadge}
+                            </div>
+                            <div class="search-book-title" title="${escapeHtml(book.title)}">${escapeHtml(book.title)}</div>
+                            <div class="search-book-meta"><i class="bi bi-person me-1"></i>${escapeHtml(book.author || '저자 미상')}</div>
+                            <p class="search-book-desc">${escapeHtml(book.description || '책 소개 정보가 없습니다.')}</p>
+                        </div>
+                        <div class="d-flex flex-column gap-2 flex-shrink-0 ms-2">
+                            <button type="button" class="btn btn-primary-gradient btn-sm rounded-pill px-3 py-2 btn-write-review-from-search" data-index="${index}">
+                                <i class="bi bi-pencil-square me-1"></i> 독서록 쓰기
+                            </button>
+                            <button type="button" class="btn btn-add-shelf btn-sm py-1" data-index="${index}">
+                                <i class="bi bi-bookmark-plus me-1"></i> 서재 보관
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        if (append) {
+            $('#searchResultsList').append(html);
+        } else {
+            $('#searchResultsList').html(html);
+        }
+    }
+
+    function updateGlobalSearchPagination() {
+        var loadMoreButton = $('#btnLoadMoreBooks');
+        loadMoreButton.prop('disabled', false)
+            .html('<i class="bi bi-chevron-down me-1"></i> 더보기');
+
+        var countText = currentSearchPageableCount > 0
+            ? `${currentSearchResults.length}개 표시 중 · 검색 가능 ${currentSearchPageableCount}개`
+            : `${currentSearchResults.length}개 표시 중`;
+
+        $('#bookSearchResultMeta').text(countText);
+
+        if (currentSearchIsEnd) {
+            $('#bookSearchMoreWrap').addClass('d-none');
+            if (currentSearchResults.length > 20) {
+                $('#bookSearchEndMessage').removeClass('d-none');
+            } else {
+                $('#bookSearchEndMessage').addClass('d-none');
+            }
+        } else {
+            $('#bookSearchEndMessage').addClass('d-none');
+            $('#bookSearchMoreWrap').removeClass('d-none');
+        }
     }
 
     function escapeHtml(str) {
@@ -203,6 +277,9 @@ $(document).ready(function () {
 
     // --- 2. Write Review Modal: Book Search & Selection ---
     var reviewSearchResults = [];
+    var reviewSearchQuery = '';
+    var reviewSearchPage = 1;
+    var reviewSearchIsEnd = true;
 
     $('#btnExecuteReviewSearch').on('click', function () {
         performReviewBookSearch();
@@ -222,18 +299,36 @@ $(document).ready(function () {
             return;
         }
 
-        $('#reviewSearchLoading').removeClass('d-none');
-        $('#reviewSearchResultsList').empty();
+        reviewSearchQuery = query;
+        reviewSearchPage = 1;
+        reviewSearchIsEnd = true;
         reviewSearchResults = [];
+        $('#reviewSearchResultsList').empty();
+
+        loadReviewSearchPage(1, false);
+    }
+
+    $(document).on('click', '#btnLoadMoreReviewBooks', function () {
+        if (!reviewSearchQuery || reviewSearchIsEnd) return;
+        loadReviewSearchPage(reviewSearchPage + 1, true);
+    });
+
+    function loadReviewSearchPage(page, append) {
+        $('#reviewSearchLoading').removeClass('d-none');
+        $('#btnLoadMoreReviewBooks').prop('disabled', true);
 
         $.ajax({
             url: '/Search/Query',
             type: 'GET',
-            data: { q: query },
+            data: { q: reviewSearchQuery, page: page, size: 20 },
             dataType: 'json',
             success: function (response) {
                 $('#reviewSearchLoading').addClass('d-none');
-                if (!response.success || !response.data || response.data.length === 0) {
+
+                var pageData = response && response.data ? response.data : null;
+                var books = pageData && Array.isArray(pageData.items) ? pageData.items : [];
+
+                if (!response.success || (!append && books.length === 0)) {
                     $('#reviewSearchResultsList').html(`
                         <div class="text-center text-muted py-3">
                             <span class="small">검색 결과가 없습니다. 다른 책 제목을 입력해 보세요.</span>
@@ -242,10 +337,16 @@ $(document).ready(function () {
                     return;
                 }
 
-                reviewSearchResults = response.data;
+                reviewSearchPage = pageData.page || page;
+                reviewSearchIsEnd = pageData.isEnd === true;
+
+                var startIndex = reviewSearchResults.length;
+                reviewSearchResults = reviewSearchResults.concat(books);
+
                 var html = '';
-                $.each(response.data, function (index, book) {
-                    var coverImg = book.coverImageUrl ? 
+                $.each(books, function (offset, book) {
+                    var index = startIndex + offset;
+                    var coverImg = book.coverImageUrl ?
                         `<img src="${book.coverImageUrl}" alt="${escapeHtml(book.title)}" class="rounded shadow-sm" style="width: 36px; height: 50px; object-fit: cover;" />` :
                         `<div class="bg-light rounded d-flex align-items-center justify-content-center text-secondary" style="width: 36px; height: 50px;"><i class="bi bi-book"></i></div>`;
 
@@ -258,17 +359,31 @@ $(document).ready(function () {
                                     <div class="text-muted text-truncate" style="font-size: 0.78rem;">${escapeHtml(book.author || '저자 미상')} · ${escapeHtml(book.publisher || '')}</div>
                                 </div>
                             </div>
-                            <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 py-1 flex-shrink-0 ms-2">
-                                선택
-                            </button>
+                            <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 py-1 flex-shrink-0 ms-2">선택</button>
                         </div>
                     `;
                 });
 
-                $('#reviewSearchResultsList').html(html);
+                if (append) {
+                    $('#reviewSearchResultsList .review-search-more-wrap').remove();
+                    $('#reviewSearchResultsList').append(html);
+                } else {
+                    $('#reviewSearchResultsList').html(html);
+                }
+
+                if (!reviewSearchIsEnd) {
+                    $('#reviewSearchResultsList').append(`
+                        <div class="review-search-more-wrap text-center pt-3">
+                            <button type="button" id="btnLoadMoreReviewBooks" class="btn btn-sm btn-outline-primary rounded-pill px-4">
+                                <i class="bi bi-chevron-down me-1"></i> 더보기
+                            </button>
+                        </div>
+                    `);
+                }
             },
             error: function () {
                 $('#reviewSearchLoading').addClass('d-none');
+                $('#btnLoadMoreReviewBooks').prop('disabled', false);
                 showToast('도서 검색 중 오류가 발생했습니다.', false);
             }
         });

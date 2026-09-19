@@ -56,6 +56,16 @@ public class BookSearchResultDto
     public string PublishedDate { get; set; } = string.Empty;
 }
 
+public class BookSearchPageDto
+{
+    public List<BookSearchResultDto> Items { get; set; } = new();
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 20;
+    public int PageableCount { get; set; }
+    public int TotalCount { get; set; }
+    public bool IsEnd { get; set; } = true;
+}
+
 public class ApiResponse<T>
 {
     public bool Success { get; set; }

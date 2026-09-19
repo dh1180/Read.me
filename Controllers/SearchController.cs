@@ -22,28 +22,37 @@ public class SearchController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Query(string? q, string? query)
+    public async Task<IActionResult> Query(string? q, string? query, int page = 1, int size = 20)
     {
         var searchTerm = !string.IsNullOrWhiteSpace(q) ? q : query;
+        page = Math.Clamp(page, 1, 50);
+        size = Math.Clamp(size, 1, 50);
+
         if (string.IsNullOrWhiteSpace(searchTerm))
         {
-            return Json(ApiResponse<List<BookSearchResultDto>>.Ok(new List<BookSearchResultDto>()));
+            return Json(ApiResponse<BookSearchPageDto>.Ok(new BookSearchPageDto
+            {
+                Page = page,
+                PageSize = size,
+                IsEnd = true
+            }));
         }
 
         try
         {
-            var results = await _searchService.SearchBooksAsync(searchTerm);
-            return Json(ApiResponse<List<BookSearchResultDto>>.Ok(results));
+            var results = await _searchService.SearchBooksAsync(searchTerm, page, size);
+            return Json(ApiResponse<BookSearchPageDto>.Ok(results));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "도서 검색 중 오류 발생");
-            return Json(ApiResponse<List<BookSearchResultDto>>.Fail("도서 검색 중 오류가 발생했습니다."));
+            return Json(ApiResponse<BookSearchPageDto>.Fail("도서 검색 중 오류가 발생했습니다."));
         }
     }
 
     [HttpGet]
-    public Task<IActionResult> SearchBooks(string? query, string? q) => Query(q, query);
+    public Task<IActionResult> SearchBooks(string? query, string? q, int page = 1, int size = 20)
+        => Query(q, query, page, size);
 
     [Authorize]
     [HttpPost]
