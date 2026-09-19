@@ -58,20 +58,9 @@ public class HomeController : Controller
             .Take(PageSize)
             .ToListAsync();
 
-        var totalReviewsCount = await _context.UserBooks.CountAsync(
-            ub => ub.Status == ReadingStatus.Completed && ub.Content != null && ub.Content != "");
-        var totalBooksCount = await _context.Books.CountAsync();
-        var popularBooks = await _context.Books
-            .OrderByDescending(b => b.UserBooks.Count(ub => ub.Status == ReadingStatus.Completed))
-            .Take(6)
-            .ToListAsync();
-
         var model = new DashboardViewModel
         {
-            TotalReviewsCount = totalReviewsCount,
-            TotalBooksCount = totalBooksCount,
             Reviews = reviews,
-            PopularBooks = popularBooks,
             CurrentSort = sort,
             SearchQuery = query,
             CurrentPage = page,
