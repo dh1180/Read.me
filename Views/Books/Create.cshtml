@@ -54,6 +54,12 @@
                         도서 정보를 찾는 중입니다...
                     </div>
                     <div id="createSearchResultsList" class="list-group list-group-flush bg-transparent"></div>
+                    <div id="createSearchMoreWrap" class="text-center pt-2 d-none">
+                        <button type="button" id="btnLoadMoreCreateBooks" class="btn btn-sm btn-outline-primary rounded-pill px-4">
+                            <i class="bi bi-chevron-down me-1"></i> 더보기
+                        </button>
+                        <div id="createSearchResultMeta" class="text-muted mt-2" style="font-size: 0.75rem;"></div>
+                    </div>
                 </div>
             </div>
 
@@ -407,6 +413,15 @@
         const resultsContainer = document.getElementById('searchResultsContainer');
         const resultsList = document.getElementById('createSearchResultsList');
         const loadingSpinner = document.getElementById('searchLoadingSpinner');
+        const createSearchMoreWrap = document.getElementById('createSearchMoreWrap');
+        const btnLoadMoreCreateBooks = document.getElementById('btnLoadMoreCreateBooks');
+        const createSearchResultMeta = document.getElementById('createSearchResultMeta');
+
+        let createSearchQuery = '';
+        let createSearchPage = 1;
+        let createSearchIsEnd = true;
+        let createSearchLoadedCount = 0;
+        let createSearchPageableCount = 0;
 
         async function executeSearch() {
             const q = searchInput.value.trim();
@@ -416,51 +431,104 @@
                 return;
             }
 
+            createSearchQuery = q;
+            createSearchPage = 1;
+            createSearchIsEnd = true;
+            createSearchLoadedCount = 0;
+            createSearchPageableCount = 0;
+
             resultsContainer.style.display = 'block';
             resultsList.innerHTML = '';
-            loadingSpinner.style.display = 'block';
+            createSearchMoreWrap.classList.add('d-none');
+
+            await loadCreateSearchPage(1, false);
+        }
+
+        async function loadCreateSearchPage(page, append) {
+            if (!createSearchQuery) return;
+
+            if (!append) {
+                loadingSpinner.style.display = 'block';
+            } else {
+                btnLoadMoreCreateBooks.disabled = true;
+                btnLoadMoreCreateBooks.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>불러오는 중...';
+            }
 
             try {
-                // Call /Search/Query endpoint with fallback to /Search/SearchBooks
-                let resp = await fetch(`/Search/Query?q=${encodeURIComponent(q)}`);
+                let resp = await fetch(`/Search/Query?q=${encodeURIComponent(createSearchQuery)}&page=${page}&size=20`);
                 if (!resp.ok) {
-                    resp = await fetch(`/Search/SearchBooks?query=${encodeURIComponent(q)}`);
+                    resp = await fetch(`/Search/SearchBooks?query=${encodeURIComponent(createSearchQuery)}&page=${page}&size=20`);
                 }
                 if (!resp.ok) {
                     throw new Error(`HTTP error ${resp.status}`);
                 }
+
                 const json = await resp.json();
                 loadingSpinner.style.display = 'none';
 
-                if (json.success && json.data && json.data.length > 0) {
-                    json.data.forEach(book => {
-                        const item = document.createElement('a');
-                        item.href = 'javascript:void(0);';
-                        item.className = 'list-group-item list-group-item-action d-flex align-items-center gap-3 p-2 border-0 rounded-3 mb-1';
-                        
-                        const coverSrc = book.coverImageUrl || 'https://via.placeholder.com/48x68?text=Book';
-                        item.innerHTML = `
-                            <img src="${coverSrc}" class="rounded shadow-sm flex-shrink-0" style="width: 42px; height: 60px; object-fit: cover;" onerror="this.src='https://via.placeholder.com/42x60?text=NoCover'">
-                            <div class="flex-grow-1 overflow-hidden">
-                                <div class="fw-bold text-dark text-truncate small">${escapeHtml(book.title)}</div>
-                                <div class="text-muted small text-truncate" style="font-size: 0.75rem;">${escapeHtml(book.author || '저자 미상')} | ${escapeHtml(book.publisher || '출판사')}</div>
-                            </div>
-                            <span class="btn btn-sm btn-primary rounded-pill px-3 py-1 small fw-semibold">선택</span>
-                        `;
+                const pageData = json && json.data ? json.data : null;
+                const books = pageData && Array.isArray(pageData.items) ? pageData.items : [];
 
-                        item.addEventListener('click', () => {
-                            selectBook(book);
-                        });
-
-                        resultsList.appendChild(item);
-                    });
-                } else {
+                if (!json.success || (!append && books.length === 0)) {
                     resultsList.innerHTML = '<div class="text-center py-3 text-muted small">검색 결과가 없습니다. 도서명을 확인해 주세요.</div>';
+                    createSearchMoreWrap.classList.add('d-none');
+                    return;
                 }
+
+                createSearchPage = pageData.page || page;
+                createSearchIsEnd = pageData.isEnd === true;
+                createSearchPageableCount = pageData.pageableCount || 0;
+
+                books.forEach(book => {
+                    const item = document.createElement('a');
+                    item.href = 'javascript:void(0);';
+                    item.className = 'list-group-item list-group-item-action d-flex align-items-center gap-3 p-2 border-0 rounded-3 mb-1';
+
+                    const coverSrc = book.coverImageUrl || 'https://via.placeholder.com/48x68?text=Book';
+                    item.innerHTML = `
+                        <img src="${coverSrc}" class="rounded shadow-sm flex-shrink-0" style="width: 42px; height: 60px; object-fit: cover;" onerror="this.src='https://via.placeholder.com/42x60?text=NoCover'">
+                        <div class="flex-grow-1 overflow-hidden">
+                            <div class="fw-bold text-dark text-truncate small">${escapeHtml(book.title)}</div>
+                            <div class="text-muted small text-truncate" style="font-size: 0.75rem;">${escapeHtml(book.author || '저자 미상')} | ${escapeHtml(book.publisher || '출판사')}</div>
+                        </div>
+                        <span class="btn btn-sm btn-primary rounded-pill px-3 py-1 small fw-semibold">선택</span>
+                    `;
+
+                    item.addEventListener('click', () => {
+                        selectBook(book);
+                    });
+
+                    resultsList.appendChild(item);
+                });
+
+                createSearchLoadedCount += books.length;
+                updateCreateSearchPagination();
             } catch (err) {
                 console.error("도서 검색 오류:", err);
                 loadingSpinner.style.display = 'none';
-                resultsList.innerHTML = '<div class="text-center py-3 text-danger small">도서 검색 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.</div>';
+                btnLoadMoreCreateBooks.disabled = false;
+                btnLoadMoreCreateBooks.innerHTML = '<i class="bi bi-chevron-down me-1"></i> 더보기';
+
+                if (!append) {
+                    resultsList.innerHTML = '<div class="text-center py-3 text-danger small">도서 검색 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.</div>';
+                }
+            }
+        }
+
+        function updateCreateSearchPagination() {
+            btnLoadMoreCreateBooks.disabled = false;
+            btnLoadMoreCreateBooks.innerHTML = '<i class="bi bi-chevron-down me-1"></i> 더보기';
+
+            if (createSearchPageableCount > 0) {
+                createSearchResultMeta.textContent = `${createSearchLoadedCount}개 표시 중 · 검색 가능 ${createSearchPageableCount}개`;
+            } else {
+                createSearchResultMeta.textContent = `${createSearchLoadedCount}개 표시 중`;
+            }
+
+            if (createSearchIsEnd) {
+                createSearchMoreWrap.classList.add('d-none');
+            } else {
+                createSearchMoreWrap.classList.remove('d-none');
             }
         }
 
@@ -470,6 +538,11 @@
                 e.preventDefault();
                 executeSearch();
             }
+        });
+
+        btnLoadMoreCreateBooks.addEventListener('click', async () => {
+            if (!createSearchQuery || createSearchIsEnd) return;
+            await loadCreateSearchPage(createSearchPage + 1, true);
         });
 
         function selectBook(book) {
